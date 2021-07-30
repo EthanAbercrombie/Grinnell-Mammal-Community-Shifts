@@ -1,0 +1,162 @@
+---
+title: "Untitled"
+author: "Ethan Aberccrombie"
+date: "7/29/2021"
+output: html_document
+---
+This code is borrowed and inspired by Adam Smith and the "Best Practices in Species Distribution Modeling" Workshop series.
+
+http://www.earthskysea.org/best-practices-in-species-distribution-modeling-a-workshop-in-r/
+
+A few resources:
+-http://mazamascience.com/WorkingWithData/?p=1494
+
+
+```{r}
+#load packages
+library(tidyverse)
+  #spatial data packages
+library(dismo)
+library(raster)
+library(sp)
+library(sf)
+  #ggplot functions
+library(viridis)
+
+#increase memory (up to 3gb on Windows 64 bit)
+memory.limit(memory.limit() * 2^30)
+```
+
+## R Markdown
+
+
+```{r, include=FALSE}
+#load occurrence data
+species <- read.delim('C:/Grinnell-Mammal-Community-Shifts/Data/Species Occurrence Data/Callospermophilus_lateralis/GBIF/occurrence.txt')
+
+#R does not know how to interpret the first column.
+#Change the first column to a character.
+species$gbifID <- as.character(species$gbifID)
+
+#structure of data frame
+str(species)
+
+#observation types
+unique(species$type)
+  #take a subset of the data.
+  #We are assuming these 'types' of data represent real collections, collected by professionals.
+  species <- subset(species,
+    type=='PhysicalObject' |
+    type=='specimen' |
+    type=='PRESERVED_SPECIMEN' |
+    type=='PreservedSpecimen' |
+    type=='Occurrence' |
+    type=="Collection"
+  )
+
+```
+
+```{r, include=FALSE}
+### convert species data to a spatial object for plotting
+
+	# assuming your data frame with species data (with coordinates) is called "species"
+	# also assuming columns for longitude/latitude are the names in GBIF ("decimalLongitude", "decimalLatitude")
+	
+	ll <- c('decimalLongitude', 'decimalLatitude')
+	
+	# "proj4" string for the coordinate reference system used by GBIF (WGS84)
+	wgs84 <- '+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84'
+	
+	# remove records with no long/lat
+	speciesNoNas <- species[complete.cases(species[ , ll]) , ]
+	
+	# convert to a "shapefile"... may give a warning about the coordinate reference system, but it's OK
+	speciesSp <- SpatialPointsDataFrame(coords=speciesNoNas[ , ll], data=speciesNoNas, proj4string=CRS(wgs84))
+```
+
+```{r, include=FALSE}
+### get outlines of states/counties of Canada, US, Mexico
+
+load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Canada, USA, Mexico Level 0 WGS84.rda')
+load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Canada, USA, Mexico Level 1 WGS84.rda')
+load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Canada, USA, Mexico Level 2 WGS84.rda')
+
+	# remove Alaska and Hawaii because they make plotting much slower... but you may want to include Alaska if any species reside there
+	states <- nam1Sp[!(nam1Sp@data$NAME_1 %in% c('Hawaii', 'Alaska')), ]
+	counties <- nam2Sp[!(nam2Sp@data$NAME_1 %in% c('Hawaii', 'Alaska')), ]
+	
+  #It can take a long time for my PC to generate plots using Raster's plot function on a spatialpolygondataframe. To remedy this I will convert the spatial polygon objects to standard data frames. GGplot can be then used to evaluate spatial relationships.
+	#states
+	#states@data$id <- rownames(states@data)
+  #states_for <- fortify(states, region = "id")
+  #statesDF <- merge(states_for, states@data, by = "id")
+  #save(statesDF,file ="statesDF.RData")
+    load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/statesDF.RData')
+  
+  #counties
+  #counties@data$id <- rownames(counties@data)
+  #counties_for <- fortify(counties, region = "id")
+  #countiesDF <- merge(counties_for, states@data, by = "id")
+  #save(countiesDF, file = "countiesDF.RData")
+    load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/countiesDF.RData')
+	
+```
+
+Map of all Observations
+
+```{r}
+#Make the first map!
+#All of North America.
+ggplot(data = statesDF, aes(x = long, y = lat, group = group)) +
+  geom_polygon() +
+  geom_point(data = filter(speciesNoNas, coordinateUncertaintyInMeters) , 
+             aes(x = decimalLongitude, 
+             y = decimalLatitude, 
+             color = coordinateUncertaintyInMeters)) +
+  scale_colour_viridis(option = "magma")
+```
+
+Filter data. Remove all occurences with uncertaintity > 100m. Remove all occurences collected before 1970.
+
+```{r, include = F}
+# Because climate is constantly changing, we need to limit our references to those collections in recent years.
+# Let's start by limiting our collection to years 1970-2000
+hist(species$year,
+    xlab='Collection year',
+    ylab='Number of records',
+    main='Collection year (all years)'
+)
+
+species <- species %>% 
+  filter(year >= 1970) %>% 
+  filter(coordinateUncertaintyInMeters <= 1000) #Considering climate changes rapidly in montane environments, I am going to remove occurence that have uncertainty greater than 1000m.
+  
+```
+
+```{r}
+#Make the first map!
+#All of North America.
+ggplot(data = statesDF, aes(x = long, y = lat, group = group)) +
+  geom_polygon() +
+  geom_point(data = speciesNoNas , 
+             aes(x = decimalLongitude, 
+             y = decimalLatitude, 
+             color = coordinateUncertaintyInMeters)) +
+  scale_colour_viridis(option = "magma")
+```
+
+```{r}
+#Let's zoom in. Here we are "zooming" in and not "cropping" the data. The geoms are not manipulated. See resources for more information.
+ggplot(data = statesDF, aes(x = long, y = lat, group = group)) +
+  geom_polygon() +
+  geom_point(data = filter(speciesNoNas, coordinateUncertaintyInMeters != "NA") , 
+             aes(x = decimalLongitude, 
+             y = decimalLatitude, 
+             color = coordinateUncertaintyInMeters)) +
+  coord_sf(xlim = c(-125, -100), 
+           ylim = c(30, 55), 
+           expand = FALSE) +
+  scale_color_viridis(option = "magma")
+
+```
+
