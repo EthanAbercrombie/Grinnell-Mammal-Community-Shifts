@@ -4,15 +4,16 @@ author: "Ethan Aberccrombie"
 date: "7/29/2021"
 output: html_document
 ---
-This code is borrowed and inspired by Adam Smith and the "Best Practices in Species Distribution Modeling" Workshop series.
+This code is borrowed and inspired from Adam Smith and the "Best Practices in Species Distribution Modeling" Workshop series.
 
 http://www.earthskysea.org/best-practices-in-species-distribution-modeling-a-workshop-in-r/
 
 A few resources:
 -http://mazamascience.com/WorkingWithData/?p=1494
+-https://www.r-bloggers.com/2019/04/zooming-in-on-maps-with-sf-and-ggplot2/
 
 
-```{r}
+```{r, include=FALSE}
 #load packages
 library(tidyverse)
   #spatial data packages
@@ -85,7 +86,7 @@ load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Cana
 	states <- nam1Sp[!(nam1Sp@data$NAME_1 %in% c('Hawaii', 'Alaska')), ]
 	counties <- nam2Sp[!(nam2Sp@data$NAME_1 %in% c('Hawaii', 'Alaska')), ]
 	
-  #It can take a long time for my PC to generate plots using Raster's plot function on a spatialpolygondataframe. To remedy this I will convert the spatial polygon objects to standard data frames. GGplot can be then used to evaluate spatial relationships.
+  #It can take a long time for my PC to generate plots using Raster's plot function with a spatialpolygondataframe. To remedy this I will convert the spatial polygon objects to standard data frames. GGplot can be then used to evaluate spatial relationships.
 	#states
 	#states@data$id <- rownames(states@data)
   #states_for <- fortify(states, region = "id")
@@ -96,7 +97,7 @@ load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Cana
   #counties
   #counties@data$id <- rownames(counties@data)
   #counties_for <- fortify(counties, region = "id")
-  #countiesDF <- merge(counties_for, states@data, by = "id")
+  #countiesDF <- merge(counties_for, counties@data, by = "id")
   #save(countiesDF, file = "countiesDF.RData")
     load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/countiesDF.RData')
 	
@@ -109,16 +110,20 @@ Map of all Observations
 #All of North America.
 ggplot(data = statesDF, aes(x = long, y = lat, group = group)) +
   geom_polygon() +
-  geom_point(data = filter(speciesNoNas, coordinateUncertaintyInMeters) , 
+  geom_point(data = speciesNoNas, 
              aes(x = decimalLongitude, 
              y = decimalLatitude, 
              color = coordinateUncertaintyInMeters)) +
   scale_colour_viridis(option = "magma")
 ```
 
-Filter data. Remove all occurences with uncertaintity > 100m. Remove all occurences collected before 1970.
+There are several concerning records. One is in the ocean, the others in Mexico -- The species range does not typically include this location. 
 
-```{r, include = F}
+Before manually removing these records, let's apply a few filters.
+
+Filter data. Remove all occurences with uncertaintity > 1000m. Remove all occurences collected before 1970.
+
+```{r}
 # Because climate is constantly changing, we need to limit our references to those collections in recent years.
 # Let's start by limiting our collection to years 1970-2000
 hist(species$year,
@@ -127,36 +132,53 @@ hist(species$year,
     main='Collection year (all years)'
 )
 
-species <- species %>% 
+species_filtered <- speciesNoNas %>% 
   filter(year >= 1970) %>% 
-  filter(coordinateUncertaintyInMeters <= 1000) #Considering climate changes rapidly in montane environments, I am going to remove occurence that have uncertainty greater than 1000m.
+  filter(coordinateUncertaintyInMeters <= 1000 | is.na(coordinateUncertaintyInMeters)) #Considering climate changes rapidly in montane environments, I am going to remove occurence that have uncertainty greater than 1000m.
   
 ```
 
+Plot occurences after filtering.
+
 ```{r}
-#Make the first map!
+#map the occurences again
 #All of North America.
 ggplot(data = statesDF, aes(x = long, y = lat, group = group)) +
   geom_polygon() +
-  geom_point(data = speciesNoNas , 
+  geom_point(data = species_filtered , 
              aes(x = decimalLongitude, 
              y = decimalLatitude, 
              color = coordinateUncertaintyInMeters)) +
   scale_colour_viridis(option = "magma")
 ```
 
+Crop into the appropriate region. Add county and state borders.
+
 ```{r}
 #Let's zoom in. Here we are "zooming" in and not "cropping" the data. The geoms are not manipulated. See resources for more information.
-ggplot(data = statesDF, aes(x = long, y = lat, group = group)) +
-  geom_polygon() +
-  geom_point(data = filter(speciesNoNas, coordinateUncertaintyInMeters != "NA") , 
+ggplot() +
+  geom_polygon(data = countiesDF, aes(x = long, y = lat, group = group),
+               color = "gray",
+               fill = "lightblue") +
+  geom_polygon(data = statesDF, aes(x = long, y = lat, group = group),
+               fill = NA,
+               color = "black") +
+  geom_point(data = species_filtered, 
              aes(x = decimalLongitude, 
-             y = decimalLatitude, 
-             color = coordinateUncertaintyInMeters)) +
+             y = decimalLatitude)) +
   coord_sf(xlim = c(-125, -100), 
            ylim = c(30, 55), 
-           expand = FALSE) +
-  scale_color_viridis(option = "magma")
+           expand = FALSE)
 
+```
+
+Filter data to isolate data with issues. After filtering the data and removing data with high coordinate uncertainty there are no occurences with spatial issues.
+
+```{r}
+species_issues <- filter(species_filtered,
+                         hasGeospatialIssues == "true")
+nrow(species_issues)
+
+unique(species_filtered$issue)
 ```
 
