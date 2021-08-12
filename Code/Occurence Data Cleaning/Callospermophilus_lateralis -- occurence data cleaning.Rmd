@@ -175,10 +175,24 @@ ggplot() +
 Filter data to isolate data with issues. After filtering the data and removing data with high coordinate uncertainty there are no occurences with spatial issues.
 
 ```{r}
-species_issues <- filter(species_filtered,
+species_gspissues <- filter(species_filtered,
                          hasGeospatialIssues == "true")
-nrow(species_issues)
+nrow(species_gspissues)
+```
 
+Go through other issues.
+
+```{r}
 unique(species_filtered$issue)
+
+#Evaluate the number of observations with rounded coordinates
+nrow(filter(species_filtered,
+            grepl('COORDINATE_ROUNDED',
+                  issue
+            )))
+  #Remove these records
+species_filtered <- species_filtered %>% 
+  filter(grepl('COORDINATE_ROUNDED',
+               issue))
 ```
 
