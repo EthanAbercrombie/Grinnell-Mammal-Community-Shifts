@@ -20,9 +20,10 @@ https://stackoverflow.com/questions/50144222/how-to-mark-points-by-whether-or-no
 #load packages
 library(tidyverse)
   #spatial data packages
-library(dismo)
-library(raster)
+#library(dismo)
+#library(raster)
 library(sf)
+require(terra)
   #ggplot functions
 library(viridis)
 
@@ -196,12 +197,48 @@ ggplot() +
            expand = TRUE)
 ```
 
-After points with no coordinate uncertainty that fall outside of the IUCN rangemap are removed.
+
+
+```{r}
+# buffer size 
+buffer_distance <- as_units(80, "km")
+range_buffer <- rangeMap %>% 
+  st_buffer(dist = buffer_distance)
+
+speciesSf_filtered <- speciesSf_filtered %>% 
+  mutate(within_range = lengths(st_within(x = speciesSf_filtered, 
+                                          y = range_buffer)))
+
+ggplot() +
+  geom_sf(data = counties,
+          fill = NA) +
+  geom_sf(data = states,
+               fill = NA,
+               color = "darkred") +
+  geom_sf(data = range_buffer,
+          color = 'goldenrod3',
+          fill = 'yellow',
+          alpha = 0.3,
+          inherit.aes = FALSE) +
+  geom_sf(data = rangeMap,
+          color = 'darkgreen',
+          fill = 'green',
+          alpha = 0.5,
+          inherit.aes = FALSE) +
+  geom_sf(data = speciesSf_fi, 
+             aes(color = within_range),
+          inherit.aes = FALSE) +
+  coord_sf(xlim = c(-125, -100), 
+           ylim = c(32, 55), 
+           expand = TRUE)
+```
+
+After points with no coordinate uncertainty that fall outside of the IUCN rangemap (including buffer) are removed.
 
 ```{r}
 speciesSf_filtered <- speciesSf_filtered %>% 
   mutate(within_range = lengths(st_within(x = speciesSf_filtered, 
-                                          y = rangeMap))) %>% 
+                                          y = range_buffer))) %>% 
   filter(!(coordinateUncertaintyInMeters != "NA" &
            within_range == 0))
 
@@ -212,6 +249,11 @@ ggplot() +
   geom_sf(data = states,
                fill = NA,
                color = "darkred") +
+  geom_sf(data = range_buffer,
+          color = 'goldenrod3',
+          fill = 'yellow',
+          alpha = 0.3,
+          inherit.aes = FALSE) +
   geom_sf(data = rangeMap,
           color = 'darkgreen',
           fill = 'green',
@@ -257,6 +299,23 @@ speciesSf_filtered <- speciesSf_filtered %>%
                  issue))
 ```
 
+## Climate Data
+
+```{r}
+require(terra)
+require(raster) #for GetData function
+require(rasterVis)
+require(terrainr)
+
+#Download Data for the United States.
+  #Annual temperature
+climate_data <- getData('worldclim',
+        var = "bio",
+        res = 0.5,
+        lon = 115,
+        lat = 45)
+```
+
 # Final Plot
 
 This plot illustrates those occurences that will be used to determine the climatic preference of the species.
@@ -278,6 +337,6 @@ ggplot() +
           inherit.aes = FALSE) +
   coord_sf(xlim = c(-125, -100), 
            ylim = c(32, 55), 
-           expand = TRUE)
+           expand = TRUE) 
 ```
 
