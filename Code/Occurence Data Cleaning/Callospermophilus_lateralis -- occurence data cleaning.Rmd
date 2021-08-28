@@ -28,6 +28,7 @@ require(terra)
 library(viridis)
 
 require(rnaturalearth)
+require(units)
 
 #increase memory (up to 3gb on Windows 64 bit)
 memory.limit(memory.limit() * 2^30)
@@ -98,21 +99,6 @@ load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Cana
 	  states <- st_as_sf(states)
 	counties <- nam2Sp[!(nam2Sp@data$NAME_1 %in% c('Hawaii', 'Alaska')), ]
 	  counties <- st_as_sf(counties)
-  #It can take a long time for my PC to generate plots using Raster's plot function with a spatialpolygondataframe. To remedy this I will convert the spatial polygon objects to standard data frames. GGplot can be then used to evaluate spatial relationships.
-	#states
-	#states@data$id <- rownames(states@data)
-  #states_for <- fortify(states, region = "id")
-  #statesDF <- merge(states_for, states@data, by = "id")
-  #save(statesDF,file ="statesDF.RData")
-    load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/statesDF.RData')
-  
-  #counties
-  #counties@data$id <- rownames(counties@data)
-  #counties_for <- fortify(counties, region = "id")
-  #countiesDF <- merge(counties_for, counties@data, by = "id")
-  #save(countiesDF, file = "countiesDF.RData")
-    load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/countiesDF.RData')
-	
 ```
 
 ```{r}
@@ -225,7 +211,7 @@ ggplot() +
           fill = 'green',
           alpha = 0.5,
           inherit.aes = FALSE) +
-  geom_sf(data = speciesSf_fi, 
+  geom_sf(data = speciesSf_filtered, 
              aes(color = within_range),
           inherit.aes = FALSE) +
   coord_sf(xlim = c(-125, -100), 
@@ -302,23 +288,22 @@ speciesSf_filtered <- speciesSf_filtered %>%
 ## Climate Data
 
 ```{r}
-require(terra)
-require(raster) #for GetData function
-require(rasterVis)
-require(terrainr)
+#Note: the raster function was previously used to download WorldClim data. getData() might need to be used to download approporiate data for other species.
+require(WorldClimTiles)
 
 #Download Data for the United States.
-  #Annual temperature
-climate_data <- getData('worldclim',
-        var = "bio",
-        res = 0.5,
-        lon = 115,
-        lat = 45)
+#Tiles 11 and 12 cover the range of this species.
+worldclim_tiles <- tile_get(c(11,12), "bio")
+
+#merge tiles
+climate_data <- tile_merge(worldclim_tiles)
+
+#save climate_data for faster knitting.
+save(climate_data,
+     file = "climate_data.RData")
 ```
 
-# Final Plot
-
-This plot illustrates those occurences that will be used to determine the climatic preference of the species.
+Remove those occurrences within outside of the 95th percentile
 
 ```{r}
 ggplot() +
@@ -333,7 +318,42 @@ ggplot() +
           alpha = 0.5,
           inherit.aes = FALSE) +
   geom_sf(data = speciesSf_filtered, 
-             aes(color = within_range),
+          inherit.aes = FALSE) +
+  coord_sf(xlim = c(-125, -100), 
+           ylim = c(32, 55), 
+           expand = TRUE) 
+```
+
+```{r}
+#Extract values from points.
+#Goal: keep all points within 95% of the climate range.
+speciesSf_filtered <- raster::extract(climate_data,
+                speciesSf_filtered,
+                sp = TRUE)
+
+speciesSf_filtered <- st_as_sf(speciesSf_filtered) %>% 
+  mutate(Annual_Temp = bio1 / 10,
+         Annual_Precip = bio12 / 1000) %>% 
+  filter(Annual_Temp <= quantile(Annual_Temp, 0.95) &
+           Annual_Precip <= quantile(Annual_Precip, 0.95))
+```
+
+# Final Plot
+
+This plot illustrates those occurences that will be used to determine the climatic preference of the species.
+
+```{r}
+ggplot() +
+  geom_sf(data = states,
+               fill = NA,
+               color = "darkred") +
+  geom_sf(data = rangeMap,
+          color = 'darkgreen',
+          fill = 'green',
+          alpha = 0.5,
+          inherit.aes = FALSE) +
+  geom_sf(data = speciesSf_filtered, 
+             aes(color = Annual_Temp),
           inherit.aes = FALSE) +
   coord_sf(xlim = c(-125, -100), 
            ylim = c(32, 55), 
