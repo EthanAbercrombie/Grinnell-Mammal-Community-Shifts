@@ -34,8 +34,6 @@ require(units)
 memory.limit(memory.limit() * 2^30)
 ```
 
-## R Markdown
-
 
 ```{r, include=FALSE}
 #load occurrence data
@@ -183,7 +181,7 @@ ggplot() +
            expand = TRUE)
 ```
 
-
+Add an 80 km buffer.
 
 ```{r}
 # buffer size 
@@ -288,19 +286,26 @@ speciesSf_filtered <- speciesSf_filtered %>%
 ## Climate Data
 
 ```{r}
-#Note: the raster function was previously used to download WorldClim data. getData() might need to be used to download approporiate data for other species.
-require(WorldClimTiles)
+# # #Note: the raster function was previously used to download WorldClim data. getData() might need to be used to download approporiate data for other species.
+# # require(WorldClimTiles)
+# 
+# #Download Data for the United States.
+# #Tiles 11 and 12 cover the range of this species.
+# worldclim_tiles <- tile_get(c(11,12), "bio")
+# 
+# #merge tiles
+# climate_data <- tile_merge(worldclim_tiles)
+# 
+# #save climate_data for faster knitting.
+# save(climate_data,
+#       file = "climate_data.RData")
+# 
+# writeRaster(climate_data,
+#             "climate_data",
+#             format = 'GTiff',
+#             overwrite = T)
 
-#Download Data for the United States.
-#Tiles 11 and 12 cover the range of this species.
-worldclim_tiles <- tile_get(c(11,12), "bio")
-
-#merge tiles
-climate_data <- tile_merge(worldclim_tiles)
-
-#save climate_data for faster knitting.
-save(climate_data,
-     file = "climate_data.RData")
+climate_data <- stack('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/climate_data.tif')
 ```
 
 Remove those occurrences within outside of the 95th percentile
