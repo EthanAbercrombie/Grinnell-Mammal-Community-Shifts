@@ -36,6 +36,9 @@ require(units)
 
 require(WorldClimTiles)
 
+#Set default map projection
+default_crs = sf::st_crs(4326)
+
 #increase memory (up to 3gb on Windows 64 bit)
 memory.limit(memory.limit() * 2^30)
 ```
@@ -103,8 +106,6 @@ load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Cana
 #load rangemap
 #choose appropriate rangemap for each individual species.
 rangeMap <- st_read()
-
-default_crs = sf::st_crs(4326)
 ```
 
 # Mapping
@@ -292,8 +293,8 @@ ggplot() +
   geom_sf(data = speciesSf_filtered, 
              aes(color = Annual_Temp),
           inherit.aes = FALSE) +
-  coord_sf(xlim = c(-125, -100), 
-           ylim = c(32, 55), 
+  coord_sf(xlim = c(,), 
+           ylim = c(,), 
            expand = TRUE) 
 ```
 
