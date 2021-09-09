@@ -127,6 +127,7 @@ hist(species$year,
 ```
 
 Filter data. Remove all occurences with uncertaintity > 1000m. Remove all occurences collected before 1970.
+
 We would like to remove points with no coordinate uncertainty that fall outside of the IUCN rangemap.
 
 ```{r}
@@ -181,7 +182,6 @@ ggplot() +
            expand = TRUE)
 ```
 
-
 Other issues.
 
 Evaluate these accordingly per individual species.
@@ -211,16 +211,14 @@ speciesSf_filtered <- speciesSf_filtered %>%
 ```{r}
 # #Note: the raster function was previously used to download WorldClim data. getData() might need to be used to download approporiate data for other species.
 
-# #Define path to worldclim data
-# worldclim_path <- "D:/Worldclim Data"
+#Define path to worldclim data
+# worldclim_path <- "E:/Worldclim Data"
 # 
 # #Download Data for the United States.
 # #Tiles 11 and 12 cover the range of this species.
 # worldclim_tiles <- tile_get(tiles = c(11,12,22),
 #                             var = "bio",
 #                             path = worldclim_path)
-# 
-# 
 # #merge tiles
 # climate_data <- tile_merge(worldclim_tiles)
 # 
@@ -234,7 +232,7 @@ climate_data <- stack('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data C
 
 ```
 
-Remove those occurrences within outside of the 95th percentile
+Remove those occurrences outside of the 95th percentile
 
 ```{r}
 #Extract values from points.
@@ -242,6 +240,11 @@ Remove those occurrences within outside of the 95th percentile
 speciesSf_filtered <- raster::extract(climate_data,
                 speciesSf_filtered,
                 sp = TRUE)
+
+#Check histogram contains 0 precipitation. If so, keep in analysis.
+hist(speciesSf_filtered$climate_data_A_leucurus.12)
+min(speciesSf_filtered$climate_data_A_leucurus.12)
+#Does not contain 0 (min = 51)
 
 speciesSf_filtered <- st_as_sf(speciesSf_filtered) %>% 
   mutate(Annual_Temp = climate_data_A_leucurus.1 / 10,
