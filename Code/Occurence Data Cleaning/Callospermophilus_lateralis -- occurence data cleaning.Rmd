@@ -27,8 +27,13 @@ require(terra)
   #ggplot functions
 library(viridis)
 
+require(raster)
 require(rnaturalearth)
 require(units)
+require(WorldClimTiles)
+
+#Set default map projection
+default_crs = sf::st_crs(4326)
 
 #increase memory (up to 3gb on Windows 64 bit)
 memory.limit(memory.limit() * 2^30)
@@ -42,9 +47,6 @@ species <- read.delim('C:/Grinnell-Mammal-Community-Shifts/Data/Species Occurren
 #R does not know how to interpret the first column.
 #Change the first column to a character.
 species$gbifID <- as.character(species$gbifID)
-
-#structure of data frame
-str(species)
 
 #observation types
 unique(species$type)
@@ -64,21 +66,12 @@ unique(species$type)
 ```{r, include=FALSE}
 ### convert species data to a spatial object for plotting
 
-	# assuming your data frame with species data (with coordinates) is called "species"
-	# also assuming columns for longitude/latitude are the names in GBIF ("decimalLongitude", "decimalLatitude")
-	
-	ll <- c('decimalLongitude', 'decimalLatitude')
-	
-	# "proj4" string for the coordinate reference system used by GBIF (WGS84)
-	wgs84 <- '+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84'
-	
 	# remove records with no long/lat
-	speciesNoNas <- species[complete.cases(species[ , ll]) , ]
+speciesNoNas <- species %>% 
+  filter(!is.na(decimalLatitude) & 
+           !is.na(decimalLongitude))
 	
-	# convert to a "shapefile"... may give a warning about the coordinate reference system, but it's OK
-#	speciesSp <- SpatialPointsDataFrames(coords=speciesNoNas[ , ll], data=speciesNoNas, proj4string=CRS(wgs84))
-
-#Trying to convert to sf shapefile	
+#Create a sf object	
 speciesSf <- st_as_sf(x = speciesNoNas,
                       coords = c(x = 'decimalLongitude',
                                  y = 'decimalLatitude'),
@@ -101,9 +94,8 @@ load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Cana
 
 ```{r}
 #load rangemap
+#choose appropriate rangemap for each individual species.
 rangeMap <- st_read('C:/Grinnell-Mammal-Community-Shifts/Data/IUCN Species Ranges/Species Ranges_Exports_QGIS/Callospermophilus_lateralis/Callospermophilus_lateralis.shp')
-
-default_crs = sf::st_crs(4326)
 ```
 
 # Mapping
@@ -119,11 +111,7 @@ ggplot() +
   scale_colour_viridis(option = "magma")
 ```
 
-There are several concerning records. One is in the ocean, the others in Mexico -- The species range does not typically include this location. 
-
-Before manually removing these records, let's apply a few filters.
-
-Filter data. Remove all occurences with uncertaintity > 1000m. Remove all occurences collected before 1970.
+Before manually removing records, let's apply a few filters.
 
 ```{r}
 # Because climate is constantly changing, we need to limit our references to those collections in recent years.
@@ -131,12 +119,30 @@ Filter data. Remove all occurences with uncertaintity > 1000m. Remove all occure
 hist(species$year,
     xlab='Collection year',
     ylab='Number of records',
-    main='Collection year (all years)'
-)
+    main='Collection year (all years)')
+```
+
+Filter data. Remove all occurences with uncertaintity > 1000m. Remove all occurences collected before 1970.
+
+We would like to remove points with no coordinate uncertainty that fall outside of the IUCN rangemap.
+
+```{r}
+#Define range buffer of 80km.
+buffer_distance <- as_units(80, "km")
+
+range_buffer <- rangeMap %>% 
+  st_buffer(dist = buffer_distance)
+
 #Considering climate changes rapidly in montane environments, I am going to remove occurence that have uncertainty greater than 1000m.
 speciesSf_filtered <- speciesSf %>% 
+  mutate(within_range = lengths(st_within(x = speciesSf, 
+                                          y = rangeMap)),
+         within_buffer = lengths(st_within(x = speciesSf, 
+                                          y = range_buffer))) %>% 
   filter(year >= 1970) %>% 
-  filter(coordinateUncertaintyInMeters <= 1000 | is.na(coordinateUncertaintyInMeters))
+  filter(coordinateUncertaintyInMeters <= 1000 | is.na(coordinateUncertaintyInMeters)) %>% 
+  filter(!(coordinateUncertaintyInMeters != "NA" &
+           within_range == 0))
 ```
 
 Plot occurences after filtering.
@@ -153,14 +159,7 @@ ggplot() +
 
 Crop into the appropriate region. Add county and state borders.
 
-We would like to remove points with no coordinate uncertainty that fall outside of the IUCN rangemap.
-
 ```{r}
-#Let's zoom in. Here we are "zooming" in and not "cropping" the data. The geoms are not manipulated. See resources for more information.
-speciesSf_filtered <- speciesSf_filtered %>% 
-  mutate(within_range = lengths(st_within(x = speciesSf_filtered, 
-                                          y = rangeMap)))
-
 #Plot
 ggplot() +
   geom_sf(data = counties,
@@ -168,76 +167,6 @@ ggplot() +
   geom_sf(data = states,
                fill = NA,
                color = "darkred") +
-  geom_sf(data = rangeMap,
-          color = 'darkgreen',
-          fill = 'green',
-          alpha = 0.5,
-          inherit.aes = FALSE) +
-  geom_sf(data = speciesSf_filtered, 
-             aes(color = within_range),
-          inherit.aes = FALSE) +
-  coord_sf(xlim = c(-125, -100), 
-           ylim = c(32, 55), 
-           expand = TRUE)
-```
-
-Add an 80 km buffer.
-
-```{r}
-# buffer size 
-buffer_distance <- as_units(80, "km")
-range_buffer <- rangeMap %>% 
-  st_buffer(dist = buffer_distance)
-
-speciesSf_filtered <- speciesSf_filtered %>% 
-  mutate(within_range = lengths(st_within(x = speciesSf_filtered, 
-                                          y = range_buffer)))
-
-ggplot() +
-  geom_sf(data = counties,
-          fill = NA) +
-  geom_sf(data = states,
-               fill = NA,
-               color = "darkred") +
-  geom_sf(data = range_buffer,
-          color = 'goldenrod3',
-          fill = 'yellow',
-          alpha = 0.3,
-          inherit.aes = FALSE) +
-  geom_sf(data = rangeMap,
-          color = 'darkgreen',
-          fill = 'green',
-          alpha = 0.5,
-          inherit.aes = FALSE) +
-  geom_sf(data = speciesSf_filtered, 
-             aes(color = within_range),
-          inherit.aes = FALSE) +
-  coord_sf(xlim = c(-125, -100), 
-           ylim = c(32, 55), 
-           expand = TRUE)
-```
-
-After points with no coordinate uncertainty that fall outside of the IUCN rangemap (including buffer) are removed.
-
-```{r}
-speciesSf_filtered <- speciesSf_filtered %>% 
-  mutate(within_range = lengths(st_within(x = speciesSf_filtered, 
-                                          y = range_buffer))) %>% 
-  filter(!(coordinateUncertaintyInMeters != "NA" &
-           within_range == 0))
-
-#Plot
-ggplot() +
-  geom_sf(data = counties,
-          fill = NA) +
-  geom_sf(data = states,
-               fill = NA,
-               color = "darkred") +
-  geom_sf(data = range_buffer,
-          color = 'goldenrod3',
-          fill = 'yellow',
-          alpha = 0.3,
-          inherit.aes = FALSE) +
   geom_sf(data = rangeMap,
           color = 'darkgreen',
           fill = 'green',
@@ -308,26 +237,7 @@ speciesSf_filtered <- speciesSf_filtered %>%
 climate_data <- stack('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/climate_data.tif')
 ```
 
-Remove those occurrences within outside of the 95th percentile
-
-```{r}
-ggplot() +
-  geom_sf(data = counties,
-          fill = NA) +
-  geom_sf(data = states,
-               fill = NA,
-               color = "darkred") +
-  geom_sf(data = rangeMap,
-          color = 'darkgreen',
-          fill = 'green',
-          alpha = 0.5,
-          inherit.aes = FALSE) +
-  geom_sf(data = speciesSf_filtered, 
-          inherit.aes = FALSE) +
-  coord_sf(xlim = c(-125, -100), 
-           ylim = c(32, 55), 
-           expand = TRUE) 
-```
+Remove those occurrences outside of the 95th percentile
 
 ```{r}
 #Extract values from points.
@@ -336,9 +246,13 @@ speciesSf_filtered <- raster::extract(climate_data,
                 speciesSf_filtered,
                 sp = TRUE)
 
+#Check histogram contains 0 precipitation. If so, keep in analysis.
+hist(speciesSf_filtered$climate_data.12)
+# 0 precip not in analysis.
+
 speciesSf_filtered <- st_as_sf(speciesSf_filtered) %>% 
-  mutate(Annual_Temp = bio1 / 10,
-         Annual_Precip = bio12 / 1000) %>% 
+  mutate(Annual_Temp = climate_data.1 / 10,
+         Annual_Precip = climate_data.12 / 1000) %>% 
   filter(Annual_Temp <= quantile(Annual_Temp, 0.95) &
            Annual_Precip <= quantile(Annual_Precip, 0.95))
 ```
