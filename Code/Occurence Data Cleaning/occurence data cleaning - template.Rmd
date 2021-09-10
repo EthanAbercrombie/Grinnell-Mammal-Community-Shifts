@@ -151,7 +151,7 @@ speciesSf_filtered <- speciesSf %>%
                                           y = range_buffer))) %>% 
   filter(year >= 1970) %>% 
   filter(coordinateUncertaintyInMeters <= 1000 | is.na(coordinateUncertaintyInMeters)) %>% 
-  filter(!(coordinateUncertaintyInMeters != "NA" &
+  filter(!(coordinateUncertaintyInMeters == "NA" &
            within_range == 0))
 ```
 
