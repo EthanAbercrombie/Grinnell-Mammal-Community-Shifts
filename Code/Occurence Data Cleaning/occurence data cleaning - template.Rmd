@@ -69,7 +69,9 @@ unique(species$type)
     type=='PRESERVED_SPECIMEN' |
     type=='PreservedSpecimen' |
     type=='Occurrence' |
-    type=="Collection"
+    type=="Collection" |
+    type=='Physical Object' |
+    type == 'Objeto fÃsico'
   )
 ```
 
@@ -102,7 +104,7 @@ load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Cana
 	  counties <- st_as_sf(counties)
 ```
 
-```{r}
+```{r, include=FALSE}
 #load rangemap
 #choose appropriate rangemap for each individual species.
 rangeMap <- st_read()
@@ -182,6 +184,10 @@ ggplot() +
           fill = 'green',
           alpha = 0.5,
           inherit.aes = FALSE) +
+  geom_sf(data = range_buffer,
+          color = 'yellow',
+          fill = NA,
+          inherit.aes = F) +
   geom_sf(data = speciesSf_filtered, 
              aes(color = within_range),
           inherit.aes = FALSE) +
@@ -217,19 +223,19 @@ speciesSf_filtered <- speciesSf_filtered %>%
 # Climate Data
 
 ```{r}
-# #Note: the raster function was previously used to download WorldClim data.
+#Note: the raster function was previously used to download WorldClim data.
  
 #Define path to worldclim data
 worldclim_path <- "E:/Worldclim Data"
 
-# #Download Data appropriate for this species.
-# #Tiles (insert tiles) cover the range of this species.
+#Download Data appropriate for this species.
+#Tiles (insert tiles) cover the range of this species.
 range_tiles <- c(define tiles here)
 
 worldclim_tiles <- tile_get(tiles = c(range_tiles),
                             var = "bio",
                             path = worldclim_path)
-# #merge tiles
+#merge tiles
 climate_data <- tile_merge(worldclim_tiles)
  
 #Rename file to match species
@@ -276,6 +282,10 @@ ggplot() +
           fill = 'green',
           alpha = 0.5,
           inherit.aes = FALSE) +
+    geom_sf(data = range_buffer,
+          color = 'yellow',
+          fill = NA,
+          inherit.aes = F) +
   geom_sf(data = speciesSf_filtered, 
              aes(color = Annual_Temp),
           inherit.aes = FALSE) +
