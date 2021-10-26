@@ -88,6 +88,8 @@ speciesSf <- st_as_sf(x = speciesNoNas,
                       coords = c(x = 'decimalLongitude',
                                  y = 'decimalLatitude'),
                       crs = 4326)
+
+rm(list = c('species','speciesNoNas'))
 ```
 
 ```{r, include=FALSE}
@@ -102,6 +104,8 @@ load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Cana
 	  states <- st_as_sf(states)
 	counties <- nam2Sp[!(nam2Sp@data$NAME_1 %in% c('Hawaii', 'Alaska')), ]
 	  counties <- st_as_sf(counties)
+	  
+rm(list = c('nam0Sp','nam1Sp','nam2Sp'))	  
 ```
 
 ```{r, include=FALSE}
@@ -235,11 +239,17 @@ range_tiles <- c(define tiles here)
 worldclim_tiles <- tile_get(tiles = c(range_tiles),
                             var = "bio",
                             path = worldclim_path)
+
 #merge tiles
 climate_data <- tile_merge(worldclim_tiles)
+
+#subset data
+climate_data_selected <- subset(climate_data,
+                                c('bio1',
+                                  'bio12'))
  
 #Rename file to match species
-writeRaster(climate_data,
+writeRaster(climate_data_selected,
             "file name",
             format = 'GTiff',
             overwrite = T)
