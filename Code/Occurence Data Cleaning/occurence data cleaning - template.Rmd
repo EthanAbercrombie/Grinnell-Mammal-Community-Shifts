@@ -136,7 +136,7 @@ We would like to remove points with no coordinate uncertainty that fall outside 
 ```{r}
 # Because climate is constantly changing, we need to limit our references to those collections in recent years.
 # Let's start by limiting our collection to years 1970-2000
-hist(species$year,
+hist(speciesSf$year,
     xlab='Collection year',
     ylab='Number of records',
     main='Collection year (all years)')
@@ -234,9 +234,10 @@ worldclim_path <- "E:/Worldclim Data"
 
 #Download Data appropriate for this species.
 #Tiles (insert tiles) cover the range of this species.
-range_tiles <- c(define tiles here)
+range_tiles <- tile_name(as_Spatial(speciesSf_filtered),
+                         name = 'worldclim')
 
-worldclim_tiles <- tile_get(tiles = c(range_tiles),
+worldclim_tiles <- tile_get(tiles = range_tiles,
                             var = "bio",
                             path = worldclim_path)
 
