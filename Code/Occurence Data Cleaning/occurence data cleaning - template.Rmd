@@ -248,7 +248,19 @@ climate_data <- tile_merge(worldclim_tiles)
 climate_data_selected <- subset(climate_data,
                                 c('bio1',
                                   'bio12'))
- 
+
+#fill NA cells near coasts to account for fact that some records may not fall in a cell near a coast
+	for (i in 1:nlayers(climate_data_selected)) {
+		climate_data_selected[[i]] <- focal(climate_data_selected[[i]],
+		                  w=matrix(1, nrow=3, ncol=3),
+		                  fun=mean,
+		                  na.rm=TRUE,
+		                  NAonly=TRUE)
+	}
+
+name <- c('temperature','precipitation')
+names(climate_data) <- name 
+
 #Rename file to match species
 writeRaster(climate_data_selected,
             "file name",
