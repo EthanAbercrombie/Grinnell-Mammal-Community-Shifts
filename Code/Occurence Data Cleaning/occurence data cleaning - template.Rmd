@@ -258,9 +258,6 @@ climate_data_selected <- subset(climate_data,
 		                  NAonly=TRUE)
 	}
 
-name <- c('temperature','precipitation')
-names(climate_data) <- name 
-
 #Rename file to match species
 writeRaster(climate_data_selected,
             "file name",
@@ -269,6 +266,9 @@ writeRaster(climate_data_selected,
 
 #Add path to tif file
 climate_data <- stack('')
+
+name <- c('temperature','precipitation')
+names(climate_data) <- name 
 ```
 
 Remove those occurrences outside of the 95th percentile
@@ -285,8 +285,8 @@ hist(speciesSf_filtered$climate_data.12)
 #
 
 speciesSf_filtered <- st_as_sf(speciesSf_filtered) %>% 
-  mutate(Annual_Temp = climate_data_A_leucurus.1 / 10,
-         Annual_Precip = climate_data_A_leucurus.12 / 1000) %>% 
+  mutate(Annual_Temp = temperature / 10,
+         Annual_Precip = precipitation / 1000) %>% 
   filter(Annual_Temp <= quantile(Annual_Temp, 0.95) &
            Annual_Precip <= quantile(Annual_Precip, 0.95))
 ```
