@@ -281,7 +281,7 @@ speciesSf_filtered <- raster::extract(climate_data,
                 sp = TRUE)
 
 #Check histogram contains 0 precipitation. If so, keep in analysis.
-hist(speciesSf_filtered$climate_data.12)
+hist(speciesSf_filtered$precipitation)
 #
 
 speciesSf_filtered <- st_as_sf(speciesSf_filtered) %>% 
