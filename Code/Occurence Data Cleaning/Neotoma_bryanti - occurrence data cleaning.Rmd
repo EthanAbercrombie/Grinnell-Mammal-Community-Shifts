@@ -1,0 +1,318 @@
+---
+title: "Neotoma_bryanti - occurrence data cleaning"
+author: "Ethan Aberccrombie"
+date: "11/4/2021"
+output: html_document
+---
+
+This script is a template to clean species occurrence data for a project aiming to understand how the climatic tendencies of small-mammal communities in the sierra Nevada are changing.
+
+This code is borrowed and inspired from Adam Smith and the "Best Practices in Species Distribution Modeling" Workshop series.
+
+http://www.earthskysea.org/best-practices-in-species-distribution-modeling-a-workshop-in-r/
+
+A few resources:
+-http://mazamascience.com/WorkingWithData/?p=1494
+-https://www.r-bloggers.com/2019/04/zooming-in-on-maps-with-sf-and-ggplot2/
+
+https://r-spatial.org/r/2018/10/25/ggplot2-sf.html
+
+https://stackoverflow.com/questions/50144222/how-to-mark-points-by-whether-or-not-they-are-within-a-polygon
+
+```{r, include=FALSE}
+#load packages
+
+library(tidyverse)
+#spatial data packages
+
+library(raster)
+library(sf)
+
+#ggplot functions
+library(viridis)
+
+require(rnaturalearth)
+require(units)
+
+require(WorldClimTiles)
+
+#Set default map projection
+default_crs = sf::st_crs(4326)
+
+#increase memory (up to 3gb on Windows 64 bit)
+memory.limit(memory.limit() * 2^30)
+```
+
+
+
+```{r, include=FALSE}
+#load occurrence data
+#Choose occurrence data in files.
+species <- read.delim('C:/Grinnell-Mammal-Community-Shifts/Data/Species Occurrence Data/Neotoma_bryanti/occurrence.txt')
+
+#R does not know how to interpret the first column.
+#Change the first column to a character.
+species$gbifID <- as.character(species$gbifID)
+```
+
+Look at data types and only include those that represent 'real' collections.
+
+```{r, include=FALSE}
+#observation types
+unique(species$type)
+
+#take a subset of the data.
+  #We are assuming these 'types' of data represent real collections, collected by professionals.
+  species <- subset(species,
+    type=='PhysicalObject' |
+    type=='specimen' |
+    type=='PRESERVED_SPECIMEN' |
+    type=='PreservedSpecimen' |
+    type=='Occurrence' |
+    type=="Collection" |
+    type=='Physical Object' |
+    type == 'Objeto fÃsico'
+  )
+```
+
+```{r, include=FALSE}
+### convert species data to a spatial object for plotting
+
+	# remove records with no long/lat
+speciesNoNas <- species %>% 
+  filter(!is.na(decimalLatitude) & 
+           !is.na(decimalLongitude))
+	
+#Create a sf object	
+speciesSf <- st_as_sf(x = speciesNoNas,
+                      coords = c(x = 'decimalLongitude',
+                                 y = 'decimalLatitude'),
+                      crs = 4326)
+
+rm(list = c('species','speciesNoNas'))
+```
+
+```{r, include=FALSE}
+### get outlines of states/counties of Canada, US, Mexico
+
+load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Canada, USA, Mexico Level 0 WGS84.rda')
+load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Canada, USA, Mexico Level 1 WGS84.rda')
+load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Canada, USA, Mexico Level 2 WGS84.rda')
+
+	# remove Alaska and Hawaii because they make plotting much slower... but you may want to include Alaska if any species reside there
+	states <- nam1Sp[!(nam1Sp@data$NAME_1 %in% c('Hawaii', 'Alaska')), ]
+	  states <- st_as_sf(states)
+	counties <- nam2Sp[!(nam2Sp@data$NAME_1 %in% c('Hawaii', 'Alaska')), ]
+	  counties <- st_as_sf(counties)
+	  
+rm(list = c('nam0Sp','nam1Sp','nam2Sp'))	  
+```
+
+```{r, include=FALSE}
+#load rangemap
+#choose appropriate rangemap for each individual species.
+rangeMap <- st_read('C:/Grinnell-Mammal-Community-Shifts/Data/IUCN Species Ranges/Species Ranges_Exports_QGIS/Neotoma_bryanti/Neotoma_bryanti.shp')
+```
+
+# Mapping
+
+Map of all Observations
+
+```{r}
+#All observations.
+ggplot() +
+  geom_sf(data = states) +
+  geom_sf(data = speciesSf, 
+             aes(color = coordinateUncertaintyInMeters)) +
+  scale_colour_viridis(option = "magma")
+```
+
+Before manually removing records, let's apply a few filters.
+
+Filter data. Remove all occurrences with uncertaintity > 1000m. Remove all occurrences collected before 1970.
+
+We would like to remove points with no coordinate uncertainty that fall outside of the IUCN rangemap.
+
+```{r}
+# Because climate is constantly changing, we need to limit our references to those collections in recent years.
+# Let's start by limiting our collection to years 1970-2000
+hist(speciesSf$year,
+    xlab='Collection year',
+    ylab='Number of records',
+    main='Collection year (all years)')
+```
+
+
+```{r}
+#Define range buffer of 80km.
+buffer_distance <- as_units(80, "km")
+
+range_buffer <- rangeMap %>% 
+  st_buffer(dist = buffer_distance)
+#Considering climate changes rapidly in montane environments, I am going to remove occurrence that have uncertainty greater than 1000m.
+speciesSf_filtered <- speciesSf %>% 
+  mutate(within_range = lengths(st_within(x = speciesSf, 
+                                          y = rangeMap)),
+         within_buffer = lengths(st_within(x = speciesSf, 
+                                          y = range_buffer))) %>% 
+  filter(year >= 1970) %>% 
+  filter(coordinateUncertaintyInMeters <= 1000 | is.na(coordinateUncertaintyInMeters)) %>% 
+  filter(!(coordinateUncertaintyInMeters == "NA" &
+           within_range == 0))
+```
+
+Plot occurrences after filtering.
+
+```{r}
+#map the occurrences again
+#All of North America.
+ggplot() +
+  geom_sf(data = states) +
+  geom_sf(data = speciesSf_filtered, 
+             aes(color = coordinateUncertaintyInMeters)) +
+  scale_colour_viridis(option = "magma")
+```
+
+Crop into the appropriate region. Add county and state borders.
+
+```{r}
+#Plot
+ggplot() +
+  geom_sf(data = counties,
+          fill = NA) +
+  geom_sf(data = states,
+               fill = NA,
+               color = "darkred") +
+  geom_sf(data = rangeMap,
+          color = 'darkgreen',
+          fill = 'green',
+          alpha = 0.5,
+          inherit.aes = FALSE) +
+  geom_sf(data = range_buffer,
+          color = 'yellow',
+          fill = NA,
+          inherit.aes = F) +
+  geom_sf(data = speciesSf_filtered, 
+             aes(color = within_range),
+          inherit.aes = FALSE) +
+  coord_sf(xlim = c(-125, -108), 
+           ylim = c(22, 40), 
+           expand = TRUE)
+```
+
+Other issues.
+
+Evaluate these accordingly per individual species.
+
+```{r}
+unique(speciesSf_filtered$issue)
+
+#Evaluate the number of observations with 'Issue'
+fi <- filter(speciesSf_filtered,
+            grepl(c('Text of issue here'),
+                  issue
+            ))
+fi$gbifID
+
+#Notes about what was removed, and how many, here.
+
+  #Remove these records
+speciesSf_filtered <- speciesSf_filtered %>% 
+  filter(!(grepl('COORDINATE_ROUNDED',
+               issue)) |
+           grepl('Issue 2 if relevant',
+                 issue))
+```
+
+# Climate Data
+
+```{r}
+#Note: the raster function was previously used to download WorldClim data.
+ 
+#Define path to worldclim data
+worldclim_path <- "E:/Worldclim Data"
+
+#Download Data appropriate for this species.
+#Tiles (insert tiles) cover the range of this species.
+range_tiles <- tile_name(as_Spatial(speciesSf_filtered),
+                         name = 'worldclim')
+
+worldclim_tiles <- tile_get(tiles = range_tiles,
+                            var = "bio",
+                            path = worldclim_path)
+
+#merge tiles
+climate_data <- tile_merge(worldclim_tiles)
+
+#subset data
+climate_data_selected <- subset(climate_data,
+                                c('bio1',
+                                  'bio12'))
+
+#fill NA cells near coasts to account for fact that some records may not fall in a cell near a coast
+	for (i in 1:nlayers(climate_data_selected)) {
+		climate_data_selected[[i]] <- focal(climate_data_selected[[i]],
+		                  w=matrix(1, nrow=3, ncol=3),
+		                  fun=mean,
+		                  na.rm=TRUE,
+		                  NAonly=TRUE)
+	}
+
+#Rename file to match species
+writeRaster(climate_data_selected,
+            "C:/Grinnell-Mammal-Community-Shifts/Data/Species Climate Data/Neotoma_bryanti_climate",
+            format = 'GTiff',
+            overwrite = T)
+
+#Add path to tif file
+climate_data <- stack('C:/Grinnell-Mammal-Community-Shifts/Data/Species Climate Data/Neotoma_bryanti_climate.tif')
+
+name <- c('temperature','precipitation')
+names(climate_data) <- name 
+```
+
+Remove those occurrences outside of the 95th percentile
+
+```{r}
+#Extract values from points.
+#Goal: keep all points within 95% of the climate range.
+speciesSf_filtered <- raster::extract(climate_data,
+                speciesSf_filtered,
+                sp = TRUE)
+
+#Check histogram contains 0 precipitation. If so, keep in analysis.
+hist(speciesSf_filtered$precipitation)
+#min precip = 77
+
+speciesSf_filtered <- st_as_sf(speciesSf_filtered) %>% 
+  mutate(Annual_Temp = temperature / 10,
+         Annual_Precip = precipitation / 1000) %>% 
+  filter(Annual_Temp <= quantile(Annual_Temp, 0.95) &
+           Annual_Precip <= quantile(Annual_Precip, 0.95))
+```
+
+# Final Plot
+
+This plot illustrates those occurrences that will be used to determine the climatic preference of the species.
+
+```{r}
+ggplot() +
+  geom_sf(data = states,
+               fill = NA,
+               color = "darkred") +
+  geom_sf(data = rangeMap,
+          color = 'darkgreen',
+          fill = 'green',
+          alpha = 0.5,
+          inherit.aes = FALSE) +
+    geom_sf(data = range_buffer,
+          color = 'yellow',
+          fill = NA,
+          inherit.aes = F) +
+  geom_sf(data = speciesSf_filtered, 
+             aes(color = Annual_Temp),
+          inherit.aes = FALSE) +
+  coord_sf(xlim = c(-125, -108), 
+           ylim = c(22, 40), 
+           expand = TRUE) 
+```
