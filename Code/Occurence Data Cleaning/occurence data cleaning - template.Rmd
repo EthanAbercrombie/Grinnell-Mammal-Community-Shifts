@@ -85,6 +85,7 @@ speciesSf <- st_as_sf(x = speciesNoNas,
                                  y = 'decimalLatitude'),
                       crs = 4326)
 
+#Remove redundant objects.
 rm(list = c('species','speciesNoNas'))
 ```
 
@@ -126,7 +127,7 @@ buffer_distance <- as_units(80, "km")
 range_buffer <- rangeMap %>% 
   st_buffer(dist = buffer_distance)
 
-#Considering climate changes rapidly in montane environments, I am going to remove occurrence that have uncertainty greater than 1000m.
+#Filter data.
 speciesSf_filtered <- speciesSf %>% 
   mutate(within_range = lengths(st_within(x = speciesSf, 
                                           y = rangeMap)),
@@ -192,7 +193,7 @@ ggplot() +
 # Save data
 
 ```{r}
-file_name - 'E:/Data/Species Occurrence Data/Species Occurrence Data Cleaned/species_name'
+file_name <- 'E:/Data/Species Occurrence Data/Species Occurrence Data Cleaned/species_name_occurrence_cleaned'
 write_delim(speciesSf_filtered,
             file = file_name)
 ```
