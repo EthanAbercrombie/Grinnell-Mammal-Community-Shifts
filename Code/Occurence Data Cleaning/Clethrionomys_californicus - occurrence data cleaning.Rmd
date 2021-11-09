@@ -1,7 +1,0 @@
----
-title: "Clethrionomys_californicus - occurrence data cleaning"
-author: "Ethan Aberccrombie"
-date: "9/10/2021"
-output: html_document
----
-
