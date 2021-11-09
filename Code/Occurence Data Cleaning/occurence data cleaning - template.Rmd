@@ -49,6 +49,10 @@ species <- read.delim()
 #R does not know how to interpret the first column.
 #Change the first column to a character.
 species$gbifID <- as.character(species$gbifID)
+
+#load rangemap
+#choose appropriate rangemap for each species.
+rangeMap <- st_read()
 ```
 
 Look at data types and only include those that represent 'real' collections.
@@ -103,12 +107,6 @@ load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Cana
 	  counties <- st_as_sf(counties)
 	  
 rm(list = c('nam0Sp','nam1Sp','nam2Sp'))	  
-```
-
-```{r, include=FALSE}
-#load rangemap
-#choose appropriate rangemap for each individual species.
-rangeMap <- st_read()
 ```
 
 # Filter Data
