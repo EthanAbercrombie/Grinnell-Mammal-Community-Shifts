@@ -193,7 +193,7 @@ ggplot() +
 # Save data
 
 ```{r}
-file_name <- 'E:/Data/Species Occurrence Data/Species Occurrence Data Cleaned/Callospermophilus_lateralis_occurrence_cleaned'
+file_name <- 'E:/Data/Species Occurrence Data/Species Occurrence Data Cleaned/Callospermophilus_lateralis_occurrence_cleaned.txt'
 write_delim(speciesSf_filtered,
             file = file_name)
 ```
