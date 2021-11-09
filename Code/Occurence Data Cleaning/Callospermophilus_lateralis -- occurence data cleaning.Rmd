@@ -1,9 +1,12 @@
 ---
-title: "Untitled"
+title: "Occurence data cleaning for Callospermophilus lateralis"
 author: "Ethan Aberccrombie"
-date: "7/29/2021"
+date: "11/8/2021"
 output: html_document
 ---
+
+This script is a template to clean species occurrence data for a project aiming to understand how the climatic tendencies of small-mammal communities in the sierra Nevada are changing.
+
 This code is borrowed and inspired from Adam Smith and the "Best Practices in Species Distribution Modeling" Workshop series.
 
 http://www.earthskysea.org/best-practices-in-species-distribution-modeling-a-workshop-in-r/
@@ -19,17 +22,17 @@ https://stackoverflow.com/questions/50144222/how-to-mark-points-by-whether-or-no
 ```{r, include=FALSE}
 #load packages
 library(tidyverse)
-  #spatial data packages
-#library(dismo)
-#library(raster)
+
+#spatial data packages
+library(raster)
 library(sf)
-require(terra)
-  #ggplot functions
+
+#ggplot functions
 library(viridis)
 
-require(raster)
 require(rnaturalearth)
 require(units)
+
 require(WorldClimTiles)
 
 #Set default map projection
@@ -39,18 +42,23 @@ default_crs = sf::st_crs(4326)
 memory.limit(memory.limit() * 2^30)
 ```
 
-
 ```{r, include=FALSE}
 #load occurrence data
-species <- read.delim('C:/Grinnell-Mammal-Community-Shifts/Data/Species Occurrence Data/Callospermophilus_lateralis/GBIF/occurrence.txt')
+#Choose occurrence data in files.
+species <- read.delim('E:/Data/Species Occurrence Data/Callospermophilus_lateralis/occurrence.txt')
 
 #R does not know how to interpret the first column.
 #Change the first column to a character.
 species$gbifID <- as.character(species$gbifID)
+```
 
+Look at data types and only include those that represent 'real' collections.
+
+```{r, include=FALSE}
 #observation types
 unique(species$type)
-  #take a subset of the data.
+
+#take a subset of the data.
   #We are assuming these 'types' of data represent real collections, collected by professionals.
   species <- subset(species,
     type=='PhysicalObject' |
@@ -58,9 +66,10 @@ unique(species$type)
     type=='PRESERVED_SPECIMEN' |
     type=='PreservedSpecimen' |
     type=='Occurrence' |
-    type=="Collection"
+    type=="Collection" |
+    type=='Physical Object' |
+    type == 'Objeto fÃsico'
   )
-
 ```
 
 ```{r, include=FALSE}
@@ -76,6 +85,8 @@ speciesSf <- st_as_sf(x = speciesNoNas,
                       coords = c(x = 'decimalLongitude',
                                  y = 'decimalLatitude'),
                       crs = 4326)
+
+rm(list = c('species','speciesNoNas'))
 ```
 
 ```{r, include=FALSE}
@@ -90,50 +101,33 @@ load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Cana
 	  states <- st_as_sf(states)
 	counties <- nam2Sp[!(nam2Sp@data$NAME_1 %in% c('Hawaii', 'Alaska')), ]
 	  counties <- st_as_sf(counties)
+	  
+rm(list = c('nam0Sp','nam1Sp','nam2Sp'))	  
 ```
 
-```{r}
+```{r, include=FALSE}
 #load rangemap
 #choose appropriate rangemap for each individual species.
-rangeMap <- st_read('C:/Grinnell-Mammal-Community-Shifts/Data/IUCN Species Ranges/Species Ranges_Exports_QGIS/Callospermophilus_lateralis/Callospermophilus_lateralis.shp')
+rangeMap <- st_read('E:/Data/IUCN Species Ranges/Species Ranges_Exports_QGIS/Callospermophilus_lateralis/Callospermophilus_lateralis.shp')
 ```
 
-# Mapping
+# Filter Data
 
-Map of all Observations
-
-```{r}
-#All observations.
-ggplot() +
-  geom_sf(data = states) +
-  geom_sf(data = speciesSf, 
-             aes(color = coordinateUncertaintyInMeters)) +
-  scale_colour_viridis(option = "magma")
-```
-
-Before manually removing records, let's apply a few filters.
-
-```{r}
-# Because climate is constantly changing, we need to limit our references to those collections in recent years.
-# Let's start by limiting our collection to years 1970-2000
-hist(species$year,
-    xlab='Collection year',
-    ylab='Number of records',
-    main='Collection year (all years)')
-```
-
-Filter data. Remove all occurences with uncertaintity > 1000m. Remove all occurences collected before 1970.
-
-We would like to remove points with no coordinate uncertainty that fall outside of the IUCN rangemap.
+-Remove records with no latitude or longitude.  
+-Remove all occurrences with uncertainty > 1000m.  
+-Remove points with no coordinate undertainty that fall outside of the IUCN rangemap.
+-Remove all occurrences collected before 1970.  
+-Remove data with specific issues in the **issues** field.
 
 ```{r}
 #Define range buffer of 80km.
 buffer_distance <- as_units(80, "km")
 
+#Create range buffer polygon.
+
 range_buffer <- rangeMap %>% 
   st_buffer(dist = buffer_distance)
-
-#Considering climate changes rapidly in montane environments, I am going to remove occurence that have uncertainty greater than 1000m.
+#Considering climate changes rapidly in montane environments, I am going to remove occurrence that have uncertainty greater than 1000m.
 speciesSf_filtered <- speciesSf %>% 
   mutate(within_range = lengths(st_within(x = speciesSf, 
                                           y = rangeMap)),
@@ -141,14 +135,26 @@ speciesSf_filtered <- speciesSf %>%
                                           y = range_buffer))) %>% 
   filter(year >= 1970) %>% 
   filter(coordinateUncertaintyInMeters <= 1000 | is.na(coordinateUncertaintyInMeters)) %>% 
-  filter(!(coordinateUncertaintyInMeters != "NA" &
-           within_range == 0))
+  filter(!(coordinateUncertaintyInMeters == "NA" &
+           within_range == 0)) %>%  
+  filter(!(grepl('COORDINATE_ROUNDED',
+               issue)) &
+           !(grepl('RECORDED_DATE_INVALID',
+                 issue)) &
+           !(grepl('COORDINATE_UNCERTAINTY_METERS_INVALID',
+                 issue)) &
+           !(grepl('PRESUMED_NEGATED_LONGITUDE',
+                 issue))
+         )
+
+#Evaluate remaining issues
+unique(speciesSf_filtered$issue)
 ```
 
-Plot occurences after filtering.
+Plot occurrences after filtering.
 
 ```{r}
-#map the occurences again
+#map the occurrences again
 #All of North America.
 ggplot() +
   geom_sf(data = states) +
@@ -157,7 +163,7 @@ ggplot() +
   scale_colour_viridis(option = "magma")
 ```
 
-Crop into the appropriate region. Add county and state borders.
+Crop into the appropriate region. This plot illustrates those occurrences that will paired with climate data to calculate species-specific climate affinities.
 
 ```{r}
 #Plot
@@ -172,110 +178,22 @@ ggplot() +
           fill = 'green',
           alpha = 0.5,
           inherit.aes = FALSE) +
+  geom_sf(data = range_buffer,
+          color = 'yellow',
+          fill = NA,
+          inherit.aes = F) +
   geom_sf(data = speciesSf_filtered, 
              aes(color = within_range),
           inherit.aes = FALSE) +
-  coord_sf(xlim = c(-125, -100), 
-           ylim = c(32, 55), 
+  coord_sf(xlim = c(-127, -103), 
+           ylim = c(30, 59), 
            expand = TRUE)
 ```
 
-Other issues.
-
-We will remove the single value containing the "COORDINATE_PRECISION_INVALID" warning.
-We will also remove the records containing the "COORDINATE_ROUNDED" warning.
+# Save data
 
 ```{r}
-unique(speciesSf_filtered$issue)
-
-#Evaluate the number of observations with rounded coordinates
-fi <- filter(speciesSf_filtered,
-            grepl(c('COORDINATE_ROUNDED'),
-                  issue
-            ))
-fi$gbifID
-
-fi <- filter(speciesSf_filtered,
-            grepl(c('COORDINATE_PRECISION_INVALID'),
-                  issue
-            ))
-fi$gbifID
-
-#We will remove the single value containing the "COORDINATE_PRECISION_INVALID" warning.
-#We will also remove the records containing the "COORDINATE_ROUNDED" warning. 
-
-  #Remove these records
-speciesSf_filtered <- speciesSf_filtered %>% 
-  filter(!(grepl('COORDINATE_ROUNDED',
-               issue)) |
-           grepl('COORDINATE_PRECISION_INVALID',
-                 issue))
+file_name - 'E:/Data/Species Occurrence Data/Species Occurrence Data Cleaned/species_name'
+write_delim(speciesSf_filtered,
+            file = file_name)
 ```
-
-## Climate Data
-
-```{r}
-# # #Note: the raster function was previously used to download WorldClim data. getData() might need to be used to download approporiate data for other species.
-# # require(WorldClimTiles)
-# 
-# #Download Data for the United States.
-# #Tiles 11 and 12 cover the range of this species.
-# worldclim_tiles <- tile_get(c(11,12), "bio")
-# 
-# #merge tiles
-# climate_data <- tile_merge(worldclim_tiles)
-# 
-# #save climate_data for faster knitting.
-# save(climate_data,
-#       file = "climate_data.RData")
-# 
-# writeRaster(climate_data,
-#             "climate_data",
-#             format = 'GTiff',
-#             overwrite = T)
-
-climate_data <- stack('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/climate_data.tif')
-```
-
-Remove those occurrences outside of the 95th percentile
-
-```{r}
-#Extract values from points.
-#Goal: keep all points within 95% of the climate range.
-speciesSf_filtered <- raster::extract(climate_data,
-                speciesSf_filtered,
-                sp = TRUE)
-
-#Check histogram contains 0 precipitation. If so, keep in analysis.
-hist(speciesSf_filtered$climate_data.12)
-# 0 precip not in analysis.
-
-speciesSf_filtered <- st_as_sf(speciesSf_filtered) %>% 
-  mutate(Annual_Temp = climate_data.1 / 10,
-         Annual_Precip = climate_data.12 / 1000) %>% 
-  filter(Annual_Temp <= quantile(Annual_Temp, 0.95) &
-           Annual_Precip <= quantile(Annual_Precip, 0.95))
-```
-
-# Final Plot
-
-This plot illustrates those occurences that will be used to determine the climatic preference of the species.
-
-```{r}
-ggplot() +
-  geom_sf(data = states,
-               fill = NA,
-               color = "darkred") +
-  geom_sf(data = rangeMap,
-          color = 'darkgreen',
-          fill = 'green',
-          alpha = 0.5,
-          inherit.aes = FALSE) +
-  geom_sf(data = speciesSf_filtered, 
-             aes(color = Annual_Temp),
-          inherit.aes = FALSE) +
-  coord_sf(xlim = c(-125, -100), 
-           ylim = c(32, 55), 
-           expand = TRUE) 
-```
-
