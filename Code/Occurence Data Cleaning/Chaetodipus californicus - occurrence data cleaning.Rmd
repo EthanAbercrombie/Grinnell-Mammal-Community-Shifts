@@ -1,5 +1,5 @@
 ---
-title: "Chaetodipus californicus - occurrence data cleaning"
+title: "Chaetodipus_californicus - occurrence data cleaning"
 author: "Ethan Aberccrombie"
 date: "9/9/2021"
 output: html_document
@@ -191,7 +191,7 @@ ggplot() +
 # Save data
 
 ```{r}
-file_name <- 'E:/Data/Species Occurrence Data/Species Occurrence Data Cleaned/Chaetodipus_californicus_occurrence_cleaned'
+file_name <- 'E:/Data/Species Occurrence Data/Species Occurrence Data Cleaned/Chaetodipus_californicus_occurrence_cleaned.txt'
 write_delim(speciesSf_filtered,
             file = file_name)
 ```
