@@ -64,13 +64,11 @@ occurrence_climate_data <- read_delim("C:/Grinnell-Mammal-Community-Shifts/Data/
                                       delim = ",");colnames(occurrence_climate_data)[2:3] = c('record_number',
                                             'species_name')
 
-occurrence_climate_data <- occurrence_climate_data %>% 
-  group_by(record_number)
 # #Data subset
 # occurrence_climate_data <- occurrence_climate_data %>%
 # filter(record_number %in% c(1:15))
 
-#Remove unnessary files from memory.
+#Remove unnecessary files from memory.
 rm(climate_na_data_input)
 
 #######################
@@ -78,10 +76,6 @@ rm(climate_na_data_input)
 range = 15
 
 occurrence_data <- occurrence_data %>% 
-  filter(year <= 2020,
-         year >= 1901) %>% 
-  mutate(year_upper = NA,
-         year_lower = NA) %>% 
   mutate(year_upper = ifelse(year <= 2020-range,
                              year + range,
                              2020),
@@ -93,54 +87,34 @@ occurrence_data <- occurrence_data %>%
                              year_lower),
          year_upper = ifelse(year < 1901 + range,
                              year_upper + ((1901+range)-year),
-                             year_upper)) %>% 
-  add_column(med_ann_temp = NA,
-             med_ann_precip = NA) %>% 
-  select('record_number',
-         'year_lower',
-         'year_upper')
+                             year_upper))
 
-#Write a function that calculates the median temperature and precipitation (any climate variable, really)
-# for each occurrence.
-
-#Step 1: extract appropriate rows from climate data - the number of rows equals 2x + 1 the range
-#listed above.
-occ_climate_extract <- function(record_ID){
-    occurrence_climate_data %>% 
-    filter(record_number == record_ID,
-           between(Year,
-                   year_lower,
-                   year_upper))
+for(i in 1:max(occurrence_data$record_number)){
+  print(i)
+  occurrence_climate_data$year_upper[occurrence_climate_data$record_number == i] = occurrence_data$year_upper[occurrence_data$record_number == i]
+  occurrence_climate_data$year_lower[occurrence_climate_data$record_number == i] = occurrence_data$year_lower[occurrence_data$record_number == i]
 }
+occurrence_climate_data <- x
+occurrence_climate_data <- occurrence_climate_data %>% 
+  group_by(record_number) %>%
+  filter(Year >= year_lower,
+         Year <= year_upper) %>% 
+  summarise(med_ann_temp = median(MAT),
+            med_ann_precip = median(MAP))
 
-#Set up containers to store climate data
-temp <- vector()
-precip <- vector()
+occurrence_data_merged <- inner_join(occurrence_data,
+                                     occurrence_climate_data,
+                                     by = 'record_number') %>% 
+  select(-recordNumber)
 
-#Run loop to extract data for each occurrence.
-  #Clear up memory space.
-  gc()
-  
-for (i in 1:max(occurrence_data$record_number)) {
-  progress(i, progress.bar = TRUE)
-  
-  year_lower = occurrence_data[i, "year_lower"]
-  year_upper = occurrence_data[i, "year_upper"]
-  
-  occ_subset <- occ_climate_extract(record_ID = occurrence_data$record_number[i])
+#Clear up space.
+rm(coccurrence_data,
+   occurrence_climate_data)
 
-  #Step 2: Calculate median of values. 
-  temp[i] <- median(occ_subset$MAT)
-  
-  precip[i] <- median(occ_subset$MAP)
-}
-
-occurrence_data_with_climate <- occurrence_data %>% 
-  mutate(med_ann_temp = temp,
-         med_ann_precip = precip)
-
-write_csv(occurrence_data_with_climate,
-          file = 'C:/Grinnell-Mammal-Community-Shifts/Data/occurrence_data/occurrence_data_with_climate.csv')
+#Save occurrence data with climate data.
+file_name <- 'occurrence_data_with_climate.csv'
+write_csv(occurrence_data_merged,
+          file = paste0('C:/Grinnell-Mammal-Community-Shifts/Data/occurrence_data/',file_name))
 
 #########
 # Summarize climate parameters by species
@@ -182,20 +156,7 @@ species_list <- c('Sorex_ornatus',
                   'Tamias_alpinus')
 # Peromyscus_maniculatus not included.
 
-tibble(species_list) %>% 
-  add_column(MAT = NA,
-             MAP = NA)
-
-for (i in species_list) {
-  species_name <- species_list[i]
-  
-  sp_data <- filter(occurrence_data_with_climate,
-         species_name = species_name)
-  sp_MAT 
-  
-}
-
-species_climate_preferences <- occurrence_data_with_climate %>% 
+species_climate_preferences <- occurrence_data_merged %>% 
   select(species_name,
          med_ann_temp,
          med_ann_precip) %>% 
@@ -205,40 +166,3 @@ species_climate_preferences <- occurrence_data_with_climate %>%
 
 write_csv(species_climate_preferences,
           file = 'C:/Grinnell-Mammal-Community-Shifts/Data/Climate Data/species_climate_preferences.csv')
-
-
-####################
-#
-
-occurrence_data <- occurrence_data %>%  
-  mutate(year_upper = NA,
-         year_lower = NA) %>% 
-  mutate(year_upper = ifelse(year <= 2020-range,
-                             year + range,
-                             2020),
-         year_lower = ifelse(year >= 1901 + range,
-                             year - range,
-                             1901)) %>% 
-  mutate(year_lower = ifelse(year > 2020 - range,
-                             year_lower - (range-(2020 - year)),
-                             year_lower),
-         year_upper = ifelse(year < 1901 + range,
-                             year_upper + ((1901+range)-year),
-                             year_upper)) %>% 
-  add_column(med_ann_temp = NA,
-             med_ann_precip = NA) %>% 
-  select('record_number',
-         'year_lower',
-         'year_upper')
-
-occurrence_climate_data <- occurrence_climate_data %>% 
-  group_by(record_number) 
-
-occurrence_data_with_climate <- bind_rows(occurrence_data,
-                                      occurrence_climate_data) %>% 
-    filter(between(Year,
-                 year_upper,
-                 year_lower)) %>% 
-  summarise(med_ann_temp = median(MAT),
-            med_ann_precip = median(MAP))
-
