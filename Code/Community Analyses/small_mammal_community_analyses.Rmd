@@ -1,0 +1,96 @@
+---
+title: "Small Mammal Community Analyses"
+author: "Ethan Aberccrombie"
+date: "2/24/2022"
+output: html_document
+---
+
+```{r}
+#packages
+require(tidyverse)
+require(reshape2)
+```
+
+```{r}
+#load data
+pfa_data <- read_csv('C:/Grinnell-Mammal-Community-Shifts/Rowe et al. 2017 - FINAL Occupancy Analyses/PFA ANALYSES/WPFA_results_08Mar2011.csv') %>% 
+  rename(transect_boundary = X1)
+  #Change a few names for clarity.
+pfa_data$transect_boundary <- recode(pfa_data$transect_boundary,
+         LA0min = 'lassen_historic_lower',
+         LA0max = 'lassen_historic_upper',
+         LA1min = 'lassen_modern_lower',
+         LA1max = 'lassen_modern_upper',
+         YO0min = 'yosemite_historic_lower',
+         YO0max = 'yosemite_historic_upper',
+         YO1min = 'yosemite_modern_lower',
+         YO1max = 'yosemite_modern_upper',
+         SS0min = 'southernsierras_historic_lower',
+         SS0max = 'southernsierras_historic_upper',
+         SS1min = 'southernsierras_modern_lower',
+         SS1max = 'southernsierras_modern_upper')
+pfa_data <- pfa_data %>% 
+  filter(str_detect(transect_boundary,
+                    'upper') |
+           str_detect(transect_boundary,
+                      'lower'))
+pfa_data <- melt(pfa_data,
+          id.vars = 'transect_boundary',
+          value.name = 'species_elevation',
+          variable.name = 'species_name')
+
+#load site data. Filter to exclude species and psi columns
+site_data <- read_csv('C:/Grinnell-Mammal-Community-Shifts/Rowe et al. 2017 - FINAL Occupancy Analyses/R Scripts and Mark Data/PSI-by-Site-08mar2011.csv') %>% 
+  filter(Species == 'Callospermophiluslateralis') %>% 
+  select(Region:AggregateName) %>% 
+  rename(site_name = AggregateName)
+
+#load climate data.
+sp_climate_data <- read_csv('C:/Grinnell-Mammal-Community-Shifts/Data/Climate Data/species_climate_preferences.csv')
+
+#Define species list. Sort alphabetically and remove "_" to match PFA data.
+species_list <- c('Sorex_ornatus',
+                  'Dipodomys_heermanni',
+                  'Microtus_californicus',
+                  'Reithrodontomys_megalotis',
+                  'Chaetodipus_californicus',
+                  'Neotoma_fuscipes',
+                  'Neotoma_macrotis',
+                  'Peromyscus_truei',
+                  'Sciurus_griseus',
+                  'Dipodomys_agilis',
+                  'Tamias_merriami',
+                  'Peromyscus_boylii',
+                  'Thomomys_bottae',
+                  'Otospermophilus_beecheyi',
+                  'Sorex_trowbridgii',
+                  'Tamias_quadrimaculatus',
+                  'Sorex_vagrans',
+                  'Tamias_senex',
+                  'Tamiasciurus_douglasii',
+                  'Zapus_princeps',
+                  'Microtus_montanus',
+                  'Microtus_longicaudus',
+                  'Thomomys_monticola',
+                  'Neotoma_cinerea',
+                  'Tamias_speciosus',
+                  'Tamias_amoenus',
+                  'Sorex_palustris',
+                  'Marmota_flaviventris',
+                  'Urocitellus_beldingi',
+                  'Callospermophilus_lateralis',
+                  'Sorex_monticolus',
+                  'Ochotona_princeps',
+                  'Tamias_alpinus') %>% 
+  str_sort() %>% 
+  str_remove('[_]')
+
+```
+
+```{r}
+#To calculate the community climate indexes (CTI/CPI) we use the PFA (probability false absence) results for each species at a site.
+
+#Historic sites
+
+```
+
