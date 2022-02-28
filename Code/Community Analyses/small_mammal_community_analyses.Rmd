@@ -11,7 +11,7 @@ require(tidyverse)
 require(reshape2)
 ```
 
-```{r}
+```{r, include=FALSE}
 #load data
 pfa_data <- read_csv('C:/Grinnell-Mammal-Community-Shifts/Rowe et al. 2017 - FINAL Occupancy Analyses/PFA ANALYSES/WPFA_results_08Mar2011.csv') %>% 
   rename(transect_boundary = X1) %>% 
@@ -81,17 +81,6 @@ pfa_data <- melt(pfa_data,
          -species_elevation) %>% 
   distinct()
 
-#load site data. Filter to exclude species and psi columns
-site_data <- read_csv('C:/Grinnell-Mammal-Community-Shifts/Rowe et al. 2017 - FINAL Occupancy Analyses/R Scripts and Mark Data/PSI-by-Site-08mar2011.csv') %>% 
-  filter(Species == 'Callospermophiluslateralis') %>% 
-  select(Region:AggregateName) %>% 
-  rename(site_name = AggregateName)
-  #Add empty rows for each species.
-site_data[species_list] = NA
-
-#load climate data.
-sp_climate_data <- read_csv('C:/Grinnell-Mammal-Community-Shifts/Data/Climate Data/species_climate_preferences.csv')
-
 #Define species list. Sort alphabetically and remove "_" to match PFA data.
 species_list <- c('Sorex_ornatus',
                   'Dipodomys_heermanni',
@@ -128,14 +117,26 @@ species_list <- c('Sorex_ornatus',
                   'Tamias_alpinus') %>% 
   str_sort() %>% 
   str_remove('[_]')
+
+#load site data. Filter to exclude species and psi columns
+site_data <- read_csv('C:/Grinnell-Mammal-Community-Shifts/Rowe et al. 2017 - FINAL Occupancy Analyses/R Scripts and Mark Data/PSI-by-Site-08mar2011.csv') %>% 
+  filter(Species == 'Callospermophiluslateralis') %>% 
+  select(Region:AggregateName) %>% 
+  rename(site_name = AggregateName)
+  #Add empty columns for each species.
+  site_data[species_list] = NA
+  #Remove column 117 - "LAHistoricBattleCreek" because it is a duplicate.
+  site_data <- site_data[-117,]
+
+#load climate data.
+sp_climate_data <- read_csv('C:/Grinnell-Mammal-Community-Shifts/Data/Climate Data/species_climate_preferences.csv') %>% 
+  mutate_at("species_name", str_replace, "_", "")
 ```
 
 To calculate the community climate indexes (CTI/CPI) we use the PFA (probability false absence) results for each species at a site. If a site is found between a species elevational range, we conclude that it is present. the CCI's for each site is the median value of the included species preferences.
 
-```{r}
-
+```{r, include=FALSE}
 for (i in 1:nrow(site_data)) {
-  print(i)
   
   pfa_loop <- pfa_data %>% 
     filter(Region %in% site_data[i,] &
@@ -152,24 +153,55 @@ for (i in 1:nrow(site_data)) {
   }
   
 }
+
+#Calculate Community Climate indices.
+
+#Define community data.
+community_data <- site_data %>% 
+  select(Callospermophiluslateralis:Zapusprinceps) %>% 
+  t() %>% 
+  as.data.frame()
+colnames(community_data) <- site_data$site_name
+  
+#Create a dataframe for MAT and MAP separately. Because species_name are in the same order, multiple sp_climate_data with community_data.
+community_data_MAT <- community_data * sp_climate_data$MAT
+community_data_MAT[community_data_MAT == 0] <- NA
+
+community_data_MAP <- community_data * sp_climate_data$MAP
+community_data_MAP[community_data_MAP == 0] <- NA
 ```
 
 ```{r}
-#Yosemite - historic
-pfa_data_YO_H <- filter(pfa_data,
-                        Region == 'YO',
-                        Era == 'H')
-site_data_YO_H <- filter(site_data,
-                        Region == 'YO',
-                        Era == 'H')
+community_temperature_index <- community_data_MAT %>% 
+  summarise(across(.cols = everything(),
+                   ~ median(.x,
+                            na.rm = T))) %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  rename(CTI = V1)
 
-#Yosemite - modern
-pfa_data_YO_M <- filter(pfa_data,
-                        Region == 'YO',
-                        Era == 'M')
-site_data_YO_M <- filter(site_data,
-                        Region == 'YO',
-                        Era == 'M')
+community_precipitation_index <- community_data_MAP %>% 
+  summarise(across(.cols = everything(),
+                   ~ median(.x,
+                            na.rm = T))) %>% 
+  t() %>% 
+  as.data.frame() %>% 
+  rename(CPI = V1)
 
+#Merge CTI and CPI with site_data
+final_data <- bind_cols(community_temperature_index,
+                        community_precipitation_index,
+                        site_data) %>% 
+  select(site_name,
+         everything()) %>% 
+  mutate(site_name = as.factor(site_name),
+         Region = as.factor(Region),
+         Era = as.factor(Era))
+  
+final_data %>% 
+  ggplot(aes(x = Elev,
+             y = CTI)) +
+  geom_point(aes(color = Era)) +
+  facet_grid(rows = vars(Region))
 ```
 
