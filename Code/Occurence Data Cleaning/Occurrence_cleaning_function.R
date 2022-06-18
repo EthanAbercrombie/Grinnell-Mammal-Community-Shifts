@@ -9,20 +9,69 @@ load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Cana
 load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Canada, USA, Mexico Level 1 WGS84.rda')
 load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Canada, USA, Mexico Level 2 WGS84.rda')
 
-# remove Alaska and Hawaii because they make plotting much slower... but you may want to include Alaska if any species reside there
-states <- nam1Sp[!(nam1Sp@data$NAME_1 %in% c('Hawaii')), ]
+states <- st_transform(st_read('/Users/ethanabercrombie/Desktop/Spatial_Data/gadm404-levels.gpkg',
+                      layer = 'level1'),
+                      enmSdm::getCRS('albersNA')) %>% 
+  filter(ID_0 == 'USA' |
+           ID_0 == 'CAN' |
+           ID_0 == 'MEX',
+         NAME_1 != 'Alaska' &
+           NAME_1 != 'Hawaii')
 
-states <- st_transform(st_as_sf(states),
-                       enmSdm::getCRS('albersNA'))
-counties <- nam2Sp[!(nam2Sp@data$NAME_1 %in% c('Hawaii')), ]
-counties <- st_transform(st_as_sf(counties),
-                         enmSdm::getCRS('albersNA'))
+x <- ggplot() +
+  geom_sf(data = states,
+          fill = 'red')
 
-rm(list = c('nam0Sp','nam1Sp','nam2Sp'))
+y <- ggplot() +
+  geom_sf(data = states,
+          fill = 'blue')
+
+quartz(type = 'pdf',
+       dpi = 144,
+       antialias = T,
+       file = '~/Desktop/test_plot')
+
+print(x)
+
+graphics.off()
+
+
 
 #Define species in study.
-species_list <- c('Chaetodipus_californicus',
-                  'Callospermophilus_lateralis')
+
+species_list <- c('Sorex_ornatus',
+                                    'Dipodomys_heermanni',
+                                    'Microtus_californicus',
+                                    'Reithrodontomys_megalotis',
+                                    'Chaetodipus_californicus',
+                                    'Neotoma_fuscipes',
+                                    'Neotoma_macrotis',
+                                    'Peromyscus_truei',
+                                    'Sciurus_griseus',
+                                    'Dipodomys_agilis',
+                                    'Tamias_merriami',
+                                    'Peromyscus_boylii',
+                                    'Thomomys_bottae',
+                                    'Otospermophilus_beecheyi',
+                                    'Sorex_trowbridgii',
+                                    'Tamias_quadrimaculatus',
+                                    'Sorex_vagrans',
+                                    'Tamias_senex',
+                                    'Tamiasciurus_douglasii',
+                                    'Zapus_princeps',
+                                    'Microtus_montanus',
+                                    'Microtus_longicaudus',
+                                    'Thomomys_monticola',
+                                    'Neotoma_cinerea',
+                                    'Tamias_speciosus',
+                                    'Tamias_amoenus',
+                                    'Sorex_palustris',
+                                    'Marmota_flaviventris',
+                                    'Urocitellus_beldingi',
+                                    'Callospermophilus_lateralis',
+                                    'Sorex_monticolus',
+                                    'Ochotona_princeps',
+                                    'Tamias_alpinus')
 # Peromyscus_maniculatus not included.
 
 #Create empty dataframe to store filtering results.
@@ -34,14 +83,12 @@ occurrence_metadata <- tibble(species = species_list,
                               outside_buffer = NA)
 
 #Define export folders.
-data_export_folder <- 'E:/Data/Species Occurrence Data/Species Occurrence Data Cleaned/'
-plot_export_folder <- 'C:/Grinnell-Mammal-Community-Shifts/Figs and Tables/Occurrence_maps/Occurrence_maps_before_climate/'
-
-
+data_export_folder <- '/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_data/occurrence_data_clean/'
+plot_export_folder <- '/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_data/occurrence_data_clean_maps/'
 for (i in 1:length(species_list)) {
   species_name <- species_list[i]
-  occurrence_data <- read.delim(paste0('E:/Data/Species Occurrence Data/',species_name,'/occurrence.txt'))
-  rangeMap <- st_transform(sf::st_read(paste0('E:/Data/IUCN Species Ranges/Species Ranges_Exports_QGIS/',
+  occurrence_data <- read.delim(paste0('/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_data/',species_name,'/occurrence.txt'))
+  rangeMap <- st_transform(sf::st_read(paste0('/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/IUCN Species Ranges/Species Ranges_Exports_QGIS/',
                                               species_name,
                                               '/',
                                               species_name,
@@ -50,7 +97,6 @@ for (i in 1:length(species_list)) {
   
   speciesSf_filtered <- occurrence_cleaning()
   
-  occurrence_cleaning()
   occurrence_plot()
 }
 
@@ -63,13 +109,10 @@ save(occurrence_metadata,
 ##########
 
 occurrence_plot <- function(){
-  occurrence_plot <- ggplot() +
+  occurrence_map <- ggplot() +
     labs(title = paste(species_name)) +
-    geom_sf(data = counties,
-            fill = NA) +
     geom_sf(data = states,
-            fill = NA,
-            color = "darkred") +
+            fill = NA) +
     geom_sf(data = rangeMap,
             color = 'darkgreen',
             fill = 'green',
@@ -79,10 +122,10 @@ occurrence_plot <- function(){
             color = 'yellow',
             fill = NA,
             inherit.aes = F) +
-    geom_sf(data = speciesSf_filtered, 
-            aes(color = within_buffer),
-            inherit.aes = FALSE) +
-    theme(legend.position = 'none') +
+    geom_hex(data = as.data.frame(st_coordinates(speciesSf_filtered)),
+             aes(x = X,
+                 y = Y)) +
+    theme() +
     coord_sf(xlim = c(pmin(occ_bounding_box[1],
                            rangeMap_bounding_box[1]),
                       pmax(occ_bounding_box[3],
@@ -93,13 +136,16 @@ occurrence_plot <- function(){
                            rangeMap_bounding_box[4])),
              expand = T)
   
-  ggsave(filename = paste0(plot_export_folder,
-                           species_name,
-                           '.jpg'),
-         plot = occurrence_plot,
-         width = 5,
-         height = 7,
-         units = 'in')
+  
+  quartz(type = 'pdf',
+         dpi = 144,
+         antialias = T,
+         file = paste0(plot_export_folder,
+                       species_name))
+  
+  print(occurrence_map)
+  
+  graphics.off()
 }
 
 #########
@@ -171,4 +217,4 @@ occurrence_cleaning <- function(){
                                                                                                      within_buffer == 0))
   return(speciesSf_filtered)
 }
-     file = 'C:/Grinnell-Mammal-Community-Shifts/Data/occurrence_metadata.Rdata')
+     #file = 'C:/Grinnell-Mammal-Community-Shifts/Data/occurrence_metadata.Rdata')
