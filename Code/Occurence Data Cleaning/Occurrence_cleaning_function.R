@@ -5,10 +5,6 @@ require(tidyverse)
 ###
 #load spatial data
 ###
-load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Canada, USA, Mexico Level 0 WGS84.rda')
-load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Canada, USA, Mexico Level 1 WGS84.rda')
-load('C:/Grinnell-Mammal-Community-Shifts/Code/Occurence Data Cleaning/GADM Canada, USA, Mexico Level 2 WGS84.rda')
-
 states <- st_transform(st_read('/Users/ethanabercrombie/Desktop/Spatial_Data/gadm404-levels.gpkg',
                       layer = 'level1'),
                       enmSdm::getCRS('albersNA')) %>% 
@@ -17,25 +13,6 @@ states <- st_transform(st_read('/Users/ethanabercrombie/Desktop/Spatial_Data/gad
            ID_0 == 'MEX',
          NAME_1 != 'Alaska' &
            NAME_1 != 'Hawaii')
-
-x <- ggplot() +
-  geom_sf(data = states,
-          fill = 'red')
-
-y <- ggplot() +
-  geom_sf(data = states,
-          fill = 'blue')
-
-quartz(type = 'pdf',
-       dpi = 144,
-       antialias = T,
-       file = '~/Desktop/test_plot')
-
-print(x)
-
-graphics.off()
-
-
 
 #Define species in study.
 
@@ -74,6 +51,8 @@ species_list <- c('Sorex_ornatus',
                                     'Tamias_alpinus')
 # Peromyscus_maniculatus not included.
 
+species_list <- c('Marmota_flaviventris')
+
 #Create empty dataframe to store filtering results.
 #The values are added in the occurrence_filtering function.
 occurrence_metadata <- tibble(species = species_list,
@@ -101,8 +80,11 @@ for (i in 1:length(species_list)) {
 }
 
 #Save metadata file
+occurrence_metadata <- occurrence_metadata %>% 
+  mutate(prop_inside = round(within_buffer/filtered_records,
+                             digits = 2))
 save(occurrence_metadata,
-     file = 'C:/Grinnell-Mammal-Community-Shifts/Data/occurrence_metadata.Rdata')
+     file = '~/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_metadata.Rdata')
 
 ###########
 #Plotting function.
@@ -179,16 +161,24 @@ occurrence_cleaning <- function(){
   range_buffer <<- rangeMap %>% 
     st_buffer(dist = buffer_distance)
   
+  #Create a buffer 3x the distance of the rangemap buffer for automatic exclusion.
+  exclusion_distance <<- units::as_units(240, "km")
+  exclusion_buffer <<- rangeMap %>% 
+    st_buffer(dist = exclusion_distance)
+  
   speciesSf_filtered <- species_alb %>% 
     mutate(within_range = lengths(st_within(x = species_alb, 
                                             y = rangeMap)),
            within_buffer = lengths(st_within(x = species_alb, 
                                              y = range_buffer)),
+           within_exclusion = lengths(st_within(x = species_alb, 
+                                                y = exclusion_buffer)),
            species_name = species_name) %>% 
     filter(year >= 1970) %>% 
     filter(coordinateUncertaintyInMeters <= 1000 | is.na(coordinateUncertaintyInMeters)) %>% 
     filter(!(coordinateUncertaintyInMeters == "NA" &
-               within_range == 0)) %>%  
+               within_range == 0),
+           within_exclusion == 1) %>%  
     filter(!(grepl('COORDINATE_ROUNDED',
                    issue)) &
              !(grepl('RECORDED_DATE_INVALID',
@@ -218,3 +208,87 @@ occurrence_cleaning <- function(){
   return(speciesSf_filtered)
 }
      #file = 'C:/Grinnell-Mammal-Community-Shifts/Data/occurrence_metadata.Rdata')
+
+
+####
+#Clean P. maniculatus separately.
+
+####
+
+
+####
+####
+
+#Several species have occurrences outside the 80km buffer. Some of these seem fine to include, others need more investigation.
+#The code below investigates these occurrences.
+
+#Redefine the species list to investigate each species in question independently.
+ species_list <- c(
+#   'Sorex_ornatus',
+#                   'Dipodomys_heermanni'
+#                   'Microtus_californicus',
+#                   'Reithrodontomys_megalotis',
+#                   'Chaetodipus_californicus',
+#                   'Neotoma_fuscipes',
+#                   'Neotoma_macrotis',
+#                   'Peromyscus_truei'
+#                   'Sciurus_griseus',
+#                   'Dipodomys_agilis'
+#                   'Tamias_merriami',
+#                   'Peromyscus_boylii',
+#                   'Thomomys_bottae',
+#                   'Otospermophilus_beecheyi',
+#                   'Sorex_trowbridgii',
+#                   'Tamias_quadrimaculatus',
+#                   'Sorex_vagrans',
+#                   'Tamias_senex',
+#                   'Tamiasciurus_douglasii',
+#                   'Zapus_princeps',
+#                   'Microtus_montanus'
+#                   'Microtus_longicaudus',
+#                   'Thomomys_monticola',
+#                   'Neotoma_cinerea',
+#                   'Tamias_speciosus',
+#                   'Tamias_amoenus',
+#                   'Sorex_palustris',
+#                   'Marmota_flaviventris',
+#                   'Urocitellus_beldingi',
+#                   'Callospermophilus_lateralis',
+#                   'Sorex_monticolus',
+#                   'Ochotona_princeps',
+#                   'Tamias_alpinus'
+)
+ 
+#Use the for loop from above to apply cleaning function.
+
+#Create new occurrence metadata tibble (will be 1 row if for each species indepently).
+#SAVE METADATA FROM ABOVE TO KEEP ALL SPECIES INFORMATION. CODE TO SAVE ALREADY INCLUDED.
+occurrence_metadata <- tibble(species = species_list,
+                              filtered_records = NA,
+                              within_range = NA,
+                              within_buffer = NA,
+                              outside_buffer = NA)
+
+for (i in 1:length(species_list)) {
+  species_name <- species_list[i]
+  occurrence_data <- read.delim(paste0('/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_data/',species_name,'/occurrence.txt'))
+  rangeMap <- st_transform(sf::st_read(paste0('/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/IUCN Species Ranges/Species Ranges_Exports_QGIS/',
+                                              species_name,
+                                              '/',
+                                              species_name,
+                                              '.shp')),
+                           enmSdm::getCRS('albersNA'))
+  
+  speciesSf_filtered <- occurrence_cleaning()
+}
+
+#Look at occurrences not within buffer.
+
+occ_issue <- speciesSf_filtered %>% 
+  filter(within_buffer == 0)
+#number of occurrences with issues.
+nrow(occ_issue)
+#Unique issues.
+unique(occ_issue$issue)
+#View data
+view(occ_issue)
