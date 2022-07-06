@@ -13,8 +13,8 @@ require(reshape2)
 
 ```{r, include=FALSE}
 #load data
-pfa_data <- read_csv('C:/Grinnell-Mammal-Community-Shifts/Rowe et al. 2017 - FINAL Occupancy Analyses/PFA ANALYSES/WPFA_results_08Mar2011.csv') %>% 
-  rename(transect_boundary = X1) %>% 
+pfa_data <- read_csv('/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinnell-Mammal-Community-Shifts/Rowe et al. 2017 - FINAL Occupancy Analyses/PFA ANALYSES/WPFA_results_08Mar2011.csv') %>% 
+  rename(transect_boundary = "...1") %>% 
   filter(str_detect(transect_boundary,
                     '0') |
            str_detect(transect_boundary,
@@ -79,7 +79,8 @@ pfa_data <- melt(pfa_data,
          species_max = max(species_elevation)) %>% 
   select(-transect_boundary,
          -species_elevation) %>% 
-  distinct()
+  distinct() %>% #Select distinct rows.
+  filter(Region != 'LA') #Remove Lassen until we figure out what's happening at this site.
 
 #Define species list. Sort alphabetically and remove "_" to match PFA data.
 species_list <- c('Sorex_ornatus',
@@ -116,34 +117,38 @@ species_list <- c('Sorex_ornatus',
                   'Ochotona_princeps',
                   'Tamias_alpinus') %>% 
   str_sort() %>% 
-  str_remove('[_]')
+  str_remove('[_]') #Remove '_' to match object 'pfa_data'
 
 #load site data. Filter to exclude species and psi columns
-site_data <- read_csv('C:/Grinnell-Mammal-Community-Shifts/Rowe et al. 2017 - FINAL Occupancy Analyses/R Scripts and Mark Data/PSI-by-Site-08mar2011.csv') %>% 
-  filter(Species == 'Callospermophiluslateralis') %>% 
+site_data <- read_csv('/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinnell-Mammal-Community-Shifts/Rowe et al. 2017 - FINAL Occupancy Analyses/R Scripts and Mark Data/PSI-by-Site-08mar2011.csv') %>% 
+  filter(Species == 'Callospermophiluslateralis') %>% #This results in a single copy of site information.
   select(Region:AggregateName) %>% 
-  rename(site_name = AggregateName)
+  rename(site_name = AggregateName) %>% 
+  filter(Region != 'LA') #Remove Lassen until we figure out what's happening at this site.
   #Add empty columns for each species.
   site_data[species_list] = NA
   #Remove column 117 - "LAHistoricBattleCreek" because it is a duplicate.
   site_data <- site_data[-117,]
 
 #load climate data.
-sp_climate_data <- read_csv('C:/Grinnell-Mammal-Community-Shifts/Data/Climate Data/species_climate_preferences.csv') %>% 
-  mutate_at("species_name", str_replace, "_", "")
+sp_climate_data <- read_csv('/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinnell-Mammal-Community-Shifts/Data/Climate Data/species_climate_preferences.csv') %>% 
+  mutate_at("species_name", str_replace, "_", "") #Remove '_' to match object 'pfa_data'
 ```
 
-To calculate the community climate indexes (CTI/CPI) we use the PFA (probability false absence) results for each species at a site. If a site is found between a species elevational range, we conclude that it is present. the CCI's for each site is the median value of the included species preferences.
+To calculate the community climate indices (CTI/CPI) we use the PFA (probability false absence) results for each species at a site. If a site is found between a species elevational range, we conclude that it is present. the CCI's for each site is the median value of the included species preferences.
 
 ```{r, include=FALSE}
+#For loop for every site CCI
 for (i in 1:nrow(site_data)) {
   
+  #Create a temporary object that is the filtered results of pfa_data (elevational distributions) that matches the Region and Era for each site. These distributions are used to determine which species are present at each site.
   pfa_loop <- pfa_data %>% 
     filter(Region %in% site_data[i,] &
              Era %in% site_data[i,])
   
+  #Assign a value of 1 (present) to species within the elevation range defined in 'pfa_data'
   for (sp in unique(species_list)) {
-    print(sp)
+    #print(sp)
     pfa_loop_2 <- pfa_loop %>% 
     filter(species_name == sp)
     site_data[i,sp] <- case_when(site_data[i, 'Elev'] >= pfa_loop_2$species_min &
@@ -155,6 +160,7 @@ for (i in 1:nrow(site_data)) {
 }
 
 #Calculate Community Climate indices.
+#Values of 'NA' are the result of sites with 0 species present.
 
 #Define community data.
 community_data <- site_data %>% 
@@ -172,6 +178,7 @@ community_data_MAP[community_data_MAP == 0] <- NA
 ```
 
 ```{r}
+#Calculate the CTI
 community_temperature_index <- community_data_MAT %>% 
   summarise(across(.cols = everything(),
                    ~ median(.x,
@@ -180,6 +187,7 @@ community_temperature_index <- community_data_MAT %>%
   as.data.frame() %>% 
   rename(CTI = V1)
 
+#Calculate the CPI.
 community_precipitation_index <- community_data_MAP %>% 
   summarise(across(.cols = everything(),
                    ~ median(.x,
@@ -189,7 +197,7 @@ community_precipitation_index <- community_data_MAP %>%
   rename(CPI = V1)
 
 #Merge CTI and CPI with site_data
-final_data <- bind_cols(community_temperature_index,
+final_community_data <- bind_cols(community_temperature_index,
                         community_precipitation_index,
                         site_data) %>% 
   select(site_name,
@@ -198,10 +206,137 @@ final_data <- bind_cols(community_temperature_index,
          Region = as.factor(Region),
          Era = as.factor(Era))
   
-final_data %>% 
+final_community_data %>% 
+  ggplot(aes(x = Elev,
+             y = CPI)) +
+  geom_point(aes(color = Era)) +
+  facet_grid(rows = vars(Region))
+
+final_community_data %>% 
   ggplot(aes(x = Elev,
              y = CTI)) +
   geom_point(aes(color = Era)) +
   facet_grid(rows = vars(Region))
+
+(final_community_data %>% 
+  group_by(Region,
+           Era) %>% 
+  summarise(number_species = length(Region),
+            elv_range <- range(Elev)))
+```
+
+# Analysis
+
+## Spline
+
+```{r}
+final_community_data %>% 
+  group_by(Region,
+           Era) %>% 
+  ggplot(mapping = aes(x = Elev,
+                       y = CPI)) +
+  geom_point(aes(color = Era)) +
+  geom_smooth(aes(color = Era))
+
+range <- 1:30
+
+####
+#Choose best CTI model using AIC.
+####
+spline_df_CTI <- tibble(
+  df_CTI_YO_H = range,
+  AIC_CTI_YO_H = NA,
+  df_CTI_YO_M = range,
+  AIC_CTI_YO_M = NA,
+  df_CTI_SS_H = range,
+  AIC_CTI_SS_H = NA,
+  df_CTI_SS_M = range,
+  AIC_CTI_SS_M = NA
+)
+
+for (i in 1:nrow(spline_df_CTI)) {
+  
+  #YO historic
+  model <- glm(data = filter(final_community_data,
+                             Region == 'YO',
+                             Era == 'H'),
+               CTI ~ splines::ns(Elev,
+                                df = i))
+  spline_df_CTI[i,'AIC_CTI_YO_H'] <- AIC(model)
+  
+  #YO modern
+  model <- glm(data = filter(final_community_data,
+                             Region == 'YO',
+                             Era == 'M'),
+               CTI ~ splines::ns(Elev,
+                                df = i))
+  spline_df_CTI[i,'AIC_CTI_YO_M'] <- AIC(model)
+  
+  #SS historic
+  model <- glm(data = filter(final_community_data,
+                             Region == 'SS',
+                             Era == 'H'),
+               CTI ~ splines::ns(Elev,
+                                df = i))
+  spline_df_CTI[i,'AIC_CTI_SS_H'] <- AIC(model)
+  
+  #SS modern
+  model <- glm(data = filter(final_community_data,
+                             Region == 'SS',
+                             Era == 'M'),
+               CTI ~ splines::ns(Elev,
+                                df = i))
+  spline_df_CTI[i,'AIC_CTI_SS_M'] <- AIC(model)
+}
+
+####
+#Choose best CPI model using AIC.
+####
+
+spline_df_CPI <- tibble(
+  df_CPI_YO_H = range,
+  AIC_CPI_YO_H = NA,
+  df_CPI_YO_M = range,
+  AIC_CPI_YO_M = NA,
+  df_CPI_SS_H = range,
+  AIC_CPI_SS_H = NA,
+  df_CPI_SS_M = range,
+  AIC_CPI_SS_M = NA
+)
+
+for (i in 1:nrow(spline_df_CPI)) {
+  
+  #YO historic
+  model <- glm(data = filter(final_community_data,
+                             Region == 'YO',
+                             Era == 'H'),
+               CPI ~ splines::ns(Elev,
+                                df = i))
+  spline_df_CPI[i,'AIC_CPI_YO_H'] <- AIC(model)
+  
+  #YO modern
+  model <- glm(data = filter(final_community_data,
+                             Region == 'YO',
+                             Era == 'M'),
+               CPI ~ splines::ns(Elev,
+                                df = i))
+  spline_df_CPI[i,'AIC_CPI_YO_M'] <- AIC(model)
+  
+  #SS historic
+  model <- glm(data = filter(final_community_data,
+                             Region == 'SS',
+                             Era == 'H'),
+               CPI ~ splines::ns(Elev,
+                                df = i))
+  spline_df_CPI[i,'AIC_CPI_SS_H'] <- AIC(model)
+  
+  #SS modern
+  model <- glm(data = filter(final_community_data,
+                             Region == 'SS',
+                             Era == 'M'),
+               CPI ~ splines::ns(Elev,
+                                df = i))
+  spline_df_CPI[i,'AIC_CPI_SS_M'] <- AIC(model)
+}
 ```
 
