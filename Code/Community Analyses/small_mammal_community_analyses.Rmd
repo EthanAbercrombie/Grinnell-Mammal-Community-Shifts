@@ -88,6 +88,14 @@ pfa_data <- melt(pfa_data,
   distinct() %>% #Select distinct rows.
   filter(Region != 'LA') #Remove Lassen until we figure out what's happening at this site.
 
+pfa_data <- pfa_data %>% 
+  bind_rows(filter(pfa_data,
+                   Era == 'M')) %>%  
+  mutate(Era = if_else(duplicated(Era) &
+                         duplicated(Region),
+                       "HM_conservative",
+                       Era)) #create hypothetical group that is conservative with respect to HM. Extends the range above and below a site.
+  
 #Define species list. Sort alphabetically and remove "_" to match PFA data.
 species_list <- c('Sorex_ornatus',
                   'Dipodomys_heermanni',
@@ -130,7 +138,6 @@ site_data <- read_csv('/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grin
   filter(Species == 'Callospermophiluslateralis') %>% #This results in a single copy of site information.
   dplyr::select(Region:AggregateName) %>% 
   rename(site_name = AggregateName) %>% 
-  filter(Region != 'LA') %>% #Remove Lassen until we figure out what's happening at this site.
   bind_rows(filter(site_data,
                    Era == 'H')) %>% #Make duplicates of historical site, and rename Era to "HM". This will be used to calculate contemporary CCIs for historical sites.
   mutate(Era = if_else(duplicated(site_name),
@@ -139,7 +146,27 @@ site_data <- read_csv('/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grin
   mutate(site_name = if_else(duplicated(site_name),
                              paste0(site_name,
                                     "_HM"),
-                             site_name))
+                             site_name)) %>% 
+  bind_rows(filter(site_data,
+                   Era == 'H')) %>% #Make duplicates of historical site, and rename Era to "HM_conservative". This will be used to calculate conservative contemporary CCIs for historical sites.
+  mutate(Era = if_else(duplicated(site_name) &
+                         duplicated(Era),
+                       "HM_conservative",
+                       Era)) %>% 
+  mutate(site_name = if_else(duplicated(site_name) &
+                         duplicated(Era),
+                             paste0(site_name,
+                                    "_HM_conservative"),
+                             site_name)) %>% 
+  filter(Region != 'LA')
+
+#This code is used to create the conservative communities, but needs more development.
+# site_data <- site_data %>% 
+#   group_by(Region,
+#            Era) %>% 
+#   arrange(Elev) %>% 
+#   mutate(elev_rank = 1:n()) %>% 
+#   ungroup() #Remove Lassen until we figure out what's happening at this site.
   
   #Add empty columns for each species.
   site_data[species_list] = NA
@@ -173,6 +200,8 @@ for (i in 1:nrow(site_data)) {
   }
   
 }
+
+#Adjust ranges to match 
 
 #Calculate Community Climate indices.
 #Values of 'NA' are the result of sites with 0 species present.
@@ -272,7 +301,7 @@ final_community_data %>%
 ```
 
 
-## Spline
+# Spline Regressions
 
 ```{r}
 final_community_data %>%  
@@ -548,6 +577,8 @@ final_community_data %>%
   labs(title = "CPI - Yosemite")
 ```
 
+# Method Plot
+
 ```{r}
 (SS_method_plot <- pfa_data %>% 
     na.omit() %>% 
@@ -614,73 +645,6 @@ ggsave(SS_method_plot,
        height = 5,
        units = 'in',
        dpi = 300)
-
-# SSModernTaylorMeadow
-# 
-# final_community_data %>% 
-#   filter(site_name == 'SSModernTaylorMeadow')
-# 
-# final_community_data %>% 
-#   ggplot() +
-#   geom_point(aes(x = Elev,
-#                  y = CTI,
-#                  fill = Era))
-
-
-####
-#Extract predicted historical CTI for modern sites using the elevation for modern sites.
-#Sequoia
-SSH_CTI_model$call
-
-SS_Modern_data <- final_community_data %>% 
-  filter(Region == 'SS',
-         Era == 'M')
-
-historic_prediction <- as.numeric(
-  predict.glm(SSH_CTI_model,
-              newdata = SS_Modern_data)
-)
-
-SS_Modern_data$CTI_change <- SS_Modern_data$CTI - historic_prediction
-plot(SS_Modern_data$CTI_change ~ SS_Modern_data$Elev)
-
-##SS CPI
-SSH_CPI_model$call
-
-historic_prediction <- as.numeric(
-  predict.glm(SSH_CPI_model,
-              newdata = SS_Modern_data)
-)
-
-SS_Modern_data$CPI_change <- SS_Modern_data$CPI - historic_prediction
-plot(SS_Modern_data$CPI_change ~ SS_Modern_data$Elev)
-
-#Yosemite
-YOH_CTI_model$call
-
-YO_Modern_data <- final_community_data %>% 
-  filter(Region == 'YO',
-         Era == 'M')
-
-historic_prediction <- as.numeric(
-  predict.glm(YOH_CTI_model,
-              newdata = YO_Modern_data)
-)
-
-YO_Modern_data$CTI_change <- YO_Modern_data$CTI - historic_prediction
-plot(YO_Modern_data$CTI_change ~ YO_Modern_data$Elev)
-
-##YO CPI
-YOH_CPI_model$call
-
-historic_prediction <- as.numeric(
-  predict.glm(YOH_CPI_model,
-              newdata = YO_Modern_data)
-)
-
-YO_Modern_data$CPI_change <- YO_Modern_data$CPI - historic_prediction
-plot(YO_Modern_data$CPI_change ~ YO_Modern_data$Elev)
-
 
 ```
 
