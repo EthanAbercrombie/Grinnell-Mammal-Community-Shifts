@@ -9,6 +9,8 @@ output: html_document
 #packages
 require(tidyverse)
 require(reshape2)
+require(elevatr) #To get elevation data using coordinates. This will help with LA issue, but may not be the best option considering elevation data will come from a different data set than the climate data (ClimateNA).
+require(sf)
 ```
 
 ```{r data, include=FALSE}
@@ -18,7 +20,7 @@ pfa_data <- read_csv('/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinn
   filter(str_detect(transect_boundary,
                     '0') |
            str_detect(transect_boundary,
-                      '1')) %>% 
+                      '1')) %>% #Filter data to select for species minimum and maximum elevation.
   mutate(Region = case_when(str_detect(transect_boundary,
                                          'SS') ~ 'SS',
                               str_detect(transect_boundary,
@@ -84,17 +86,7 @@ pfa_data <- melt(pfa_data,
   mutate(species_min = min(species_elevation),
          species_max = max(species_elevation)) %>% 
   dplyr::select(-transect_boundary,
-         -species_elevation) %>% 
-  distinct() %>% #Select distinct rows.
-  filter(Region != 'LA') #Remove Lassen until we figure out what's happening at this site.
-
-pfa_data <- pfa_data %>% 
-  bind_rows(filter(pfa_data,
-                   Era == 'M')) %>%  
-  mutate(Era = if_else(duplicated(Era) &
-                         duplicated(Region),
-                       "HM_conservative",
-                       Era)) #create hypothetical group that is conservative with respect to HM. Extends the range above and below a site.
+         -species_elevation)
   
 #Define species list. Sort alphabetically and remove "_" to match PFA data.
 species_list <- c('Sorex_ornatus',
@@ -135,30 +127,36 @@ species_list <- c('Sorex_ornatus',
 
 #load site data. Filter to exclude species and psi columns
 site_data <- read_csv('/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinnell-Mammal-Community-Shifts/Rowe et al. 2017 - FINAL Occupancy Analyses/R Scripts and Mark Data/PSI-by-Site-08mar2011.csv') %>% 
-  filter(Species == 'Callospermophiluslateralis') %>% #This results in a single copy of site information.
-  dplyr::select(Region:AggregateName) %>% 
-  rename(site_name = AggregateName) %>% 
+  rename(site_name = AggregateName) %>%
+  distinct(site_name,
+           .keep_all = T) #This results in a single copy of site information. .keep all argument keeps all columns.
+
+site_data <- site_data %>% 
   bind_rows(filter(site_data,
-                   Era == 'H')) %>% #Make duplicates of historical site, and rename Era to "HM". This will be used to calculate contemporary CCIs for historical sites.
+                   Era == 'H')) %>% #Make duplicates of historical site, and rename Era to "HM". This will be used to calculate contemporary CCIs for historical sites. Get elevation of points using Elevtr package, might solve LA issue.
   mutate(Era = if_else(duplicated(site_name),
                        "HM",
-                       Era)) %>% 
-  mutate(site_name = if_else(duplicated(site_name),
-                             paste0(site_name,
-                                    "_HM"),
-                             site_name)) %>% 
-  bind_rows(filter(site_data,
-                   Era == 'H')) %>% #Make duplicates of historical site, and rename Era to "HM_conservative". This will be used to calculate conservative contemporary CCIs for historical sites.
-  mutate(Era = if_else(duplicated(site_name) &
-                         duplicated(Era),
-                       "HM_conservative",
-                       Era)) %>% 
-  mutate(site_name = if_else(duplicated(site_name) &
-                         duplicated(Era),
-                             paste0(site_name,
-                                    "_HM_conservative"),
-                             site_name)) %>% 
-  filter(Region != 'LA')
+                       Era),
+         Elevtr = NA) %>% 
+  # mutate(site_name = if_else(duplicated(site_name),
+  #                            paste0(site_name,
+  #                                   "_HM"),
+  #                            site_name)) %>% Remove for now so we can group by site_name in B-diversity analysis.
+  relocate(Elevtr,
+           .after = Elev) %>% 
+  select(-Species,
+         -`Elevation Estimated PSI`)
+
+#Add elevation data from Elevatr package.
+site_data_sf <- site_data %>% 
+  st_as_sf(coords = c('longitude',
+                      'latitude'),
+           crs = st_crs(4326))
+  
+site_data <- site_data %>% 
+  mutate(
+    Elevtr = as.data.frame(get_elev_point(site_data_sf))[,'elevation']
+  )
 
 #This code is used to create the conservative communities, but needs more development.
 # site_data <- site_data %>% 
@@ -193,10 +191,10 @@ for (i in 1:nrow(site_data)) {
     #print(sp)
     pfa_loop_2 <- pfa_loop %>% 
     filter(species_name == sp)
-    site_data[i,sp] <- case_when(site_data[i, 'Elev'] >= pfa_loop_2$species_min &
-                                      site_data[i, 'Elev'] <= pfa_loop_2$species_max ~ 1,
-                                      site_data[i, 'Elev'] < pfa_loop_2$species_min ~ 0,
-                                      site_data[i, 'Elev'] > pfa_loop_2$species_max ~ 0)
+    site_data[i,sp] <- case_when(site_data[i, 'Elevtr'] >= pfa_loop_2$species_min &
+                                      site_data[i, 'Elevtr'] <= pfa_loop_2$species_max ~ 1,
+                                      site_data[i, 'Elevtr'] < pfa_loop_2$species_min ~ 0,
+                                      site_data[i, 'Elevtr'] > pfa_loop_2$species_max ~ 0)
   }
   
 }
@@ -208,7 +206,7 @@ for (i in 1:nrow(site_data)) {
 
 #Define community data.
 community_data <- site_data %>% 
-  select(Callospermophiluslateralis:Zapusprinceps) %>% 
+  dplyr::select(Callospermophiluslateralis:Zapusprinceps) %>% 
   t() %>% 
   as.data.frame()
 colnames(community_data) <- site_data$site_name
@@ -242,7 +240,7 @@ community_precipitation_index <- community_data_MAP %>%
 final_community_data <- bind_cols(community_temperature_index,
                         community_precipitation_index,
                         site_data) %>% 
-  select(site_name,
+  dplyr::select(site_name,
          everything()) %>% 
   mutate(site_name = as.factor(site_name),
          Region = as.factor(Region),
@@ -250,15 +248,18 @@ final_community_data <- bind_cols(community_temperature_index,
 
 write_csv(final_community_data,
           '~/Desktop/Grinnell-Mammal-Community-Shifts/Data/site_data/community_data.csv')
+
+#### to load data
+final_community_data <- read_csv('~/Desktop/Grinnell-Mammal-Community-Shifts/Data/site_data/community_data.csv')
   
 final_community_data %>% 
-  ggplot(aes(x = Elev,
+  ggplot(aes(x = Elevtr,
              y = CPI)) +
   geom_point(aes(color = Era)) +
   facet_grid(rows = vars(Region))
 
 final_community_data %>% 
-  ggplot(aes(x = Elev,
+  ggplot(aes(x = Elevtr,
              y = CTI)) +
   geom_point(aes(color = Era)) +
   facet_grid(rows = vars(Region))
@@ -267,7 +268,7 @@ final_community_data %>%
   group_by(Region,
            Era) %>% 
   summarise(number_species = length(Region),
-            elv_range <- range(Elev)))
+            elv_range <- range(Elevtr)))
 
 ```
 
@@ -282,7 +283,7 @@ range_lab <- c('0-250','250-750','750-1250','1250-1750','1750-2250','2250-2750',
 filter(final_community_data,
        Era == 'H' |
          Era == 'HM') %>% 
-  ggplot(aes(x = cut(Elev,
+  ggplot(aes(x = cut(Elevtr,
                      breaks = range),
              y = CTI)) +
   geom_boxplot(aes(color = Era)) +
@@ -291,7 +292,7 @@ filter(final_community_data,
   labs(x = 'Elevation')
 
 final_community_data %>% 
-  ggplot(aes(x = cut(Elev,
+  ggplot(aes(x = cut(Elevtr,
                      breaks = range),
              y = CPI)) +
   geom_boxplot(aes(color = Era)) +
@@ -300,12 +301,11 @@ final_community_data %>%
   labs(x = 'Elevation')
 ```
 
-
 # Spline Regressions
 
 ```{r}
 final_community_data %>%  
-  ggplot(mapping = aes(x = Elev,
+  ggplot(mapping = aes(x = Elevtr,
                        y = CTI)) +
   geom_point(aes(color = Era)) +
   geom_smooth(aes(color = Era)) +
@@ -333,7 +333,7 @@ for (i in 1:nrow(spline_df_CTI)) {
   model <- glm(data = filter(final_community_data,
                              Region == 'YO',
                              Era == 'H'),
-               CTI ~ splines::ns(Elev,
+               CTI ~ splines::ns(Elevtr,
                                 df = i))
   spline_df_CTI[i,'AIC_CTI_YO_H'] <- AIC(model)
   
@@ -341,7 +341,7 @@ for (i in 1:nrow(spline_df_CTI)) {
   model <- glm(data = filter(final_community_data,
                              Region == 'YO',
                              Era == 'M'),
-               CTI ~ splines::ns(Elev,
+               CTI ~ splines::ns(Elevtr,
                                 df = i))
   spline_df_CTI[i,'AIC_CTI_YO_M'] <- AIC(model)
   
@@ -349,7 +349,7 @@ for (i in 1:nrow(spline_df_CTI)) {
   model <- glm(data = filter(final_community_data,
                              Region == 'SS',
                              Era == 'H'),
-               CTI ~ splines::ns(Elev,
+               CTI ~ splines::ns(Elevtr,
                                 df = i))
   spline_df_CTI[i,'AIC_CTI_SS_H'] <- AIC(model)
   
@@ -357,7 +357,7 @@ for (i in 1:nrow(spline_df_CTI)) {
   model <- glm(data = filter(final_community_data,
                              Region == 'SS',
                              Era == 'M'),
-               CTI ~ splines::ns(Elev,
+               CTI ~ splines::ns(Elevtr,
                                 df = i))
   spline_df_CTI[i,'AIC_CTI_SS_M'] <- AIC(model)
 }
@@ -383,7 +383,7 @@ for (i in 1:nrow(spline_df_CPI)) {
   model <- glm(data = filter(final_community_data,
                              Region == 'YO',
                              Era == 'H'),
-               CPI ~ splines::ns(Elev,
+               CPI ~ splines::ns(Elevtr,
                                 df = i))
   spline_df_CPI[i,'AIC_CPI_YO_H'] <- AIC(model)
   
@@ -391,7 +391,7 @@ for (i in 1:nrow(spline_df_CPI)) {
   model <- glm(data = filter(final_community_data,
                              Region == 'YO',
                              Era == 'M'),
-               CPI ~ splines::ns(Elev,
+               CPI ~ splines::ns(Elevtr,
                                 df = i))
   spline_df_CPI[i,'AIC_CPI_YO_M'] <- AIC(model)
   
@@ -399,7 +399,7 @@ for (i in 1:nrow(spline_df_CPI)) {
   model <- glm(data = filter(final_community_data,
                              Region == 'SS',
                              Era == 'H'),
-               CPI ~ splines::ns(Elev,
+               CPI ~ splines::ns(Elevtr,
                                 df = i))
   spline_df_CPI[i,'AIC_CPI_SS_H'] <- AIC(model)
   
@@ -407,7 +407,7 @@ for (i in 1:nrow(spline_df_CPI)) {
   model <- glm(data = filter(final_community_data,
                              Region == 'SS',
                              Era == 'M'),
-               CPI ~ splines::ns(Elev,
+               CPI ~ splines::ns(Elevtr,
                                 df = i))
   spline_df_CPI[i,'AIC_CPI_SS_M'] <- AIC(model)
 }
@@ -419,13 +419,13 @@ for (i in 1:nrow(spline_df_CPI)) {
 YOH_CTI_model <- model <- glm(data = filter(final_community_data,
                              Region == 'YO',
                              Era == 'H'),
-               CTI ~ splines::ns(Elev,
+               CTI ~ splines::ns(Elevtr,
                                 df = spline_df_CTI[[which.min(spline_df_CTI$AIC_CTI_YO_H),'df_CTI_YO_H']]))
 ### CPI
 YOH_CPI_model <- model <- glm(data = filter(final_community_data,
                              Region == 'YO',
                              Era == 'H'),
-               CPI ~ splines::ns(Elev,
+               CPI ~ splines::ns(Elevtr,
                                 df = spline_df_CPI[[which.min(spline_df_CPI$AIC_CPI_YO_H),'df_CPI_YO_H']]))  
 
 ##YO Modern
@@ -433,39 +433,39 @@ YOH_CPI_model <- model <- glm(data = filter(final_community_data,
 YOM_CTI_model <- model <- glm(data = filter(final_community_data,
                              Region == 'YO',
                              Era == 'M'),
-               CTI ~ splines::ns(Elev,
+               CTI ~ splines::ns(Elevtr,
                                 df = spline_df_CTI[[which.min(spline_df_CTI$AIC_CTI_YO_M),'df_CTI_YO_M']]))
 ### CPI
 YOM_CPI_model <- model <- glm(data = filter(final_community_data,
                              Region == 'YO',
                              Era == 'M'),
-               CPI ~ splines::ns(Elev,
+               CPI ~ splines::ns(Elevtr,
                                 df = spline_df_CPI[[which.min(spline_df_CPI$AIC_CPI_YO_M),'df_CPI_YO_M']])) 
 ##SS Historic
 ### CTI
 SSH_CTI_model <- model <- glm(data = filter(final_community_data,
                              Region == 'SS',
                              Era == 'H'),
-               CTI ~ splines::ns(Elev,
+               CTI ~ splines::ns(Elevtr,
                                 df = spline_df_CTI[[which.min(spline_df_CTI$AIC_CTI_SS_H),'df_CTI_SS_H']]))
 ### CPI
 SSH_CPI_model <- model <- glm(data = filter(final_community_data,
                              Region == 'SS',
                              Era == 'H'),
-               CPI ~ splines::ns(Elev,
+               CPI ~ splines::ns(Elevtr,
                                 df = spline_df_CPI[[which.min(spline_df_CPI$AIC_CPI_SS_H),'df_CPI_SS_H']])) 
 ## SS Modern
 ### CTI
 SSM_CTI_model <- model <- glm(data = filter(final_community_data,
                              Region == 'SS',
                              Era == 'M'),
-               CTI ~ splines::ns(Elev,
+               CTI ~ splines::ns(Elevtr,
                                 df = spline_df_CTI[[which.min(spline_df_CTI$AIC_CTI_SS_M),'df_CTI_SS_M']]))
 ### CPI
 SSM_CPI_model <- model <- glm(data = filter(final_community_data,
                              Region == 'SS',
                              Era == 'M'),
-               CPI ~ splines::ns(Elev,
+               CPI ~ splines::ns(Elevtr,
                                 df = spline_df_CPI[[which.min(spline_df_CPI$AIC_CPI_SS_M),'df_CPI_SS_M']])) 
 ```
 
@@ -477,14 +477,14 @@ SSM_CPI_model <- model <- glm(data = filter(final_community_data,
 final_community_data %>% 
   filter(Region == 'SS') %>% 
   ggplot()+
-  geom_point(aes(x = Elev,
+  geom_point(aes(x = Elevtr,
                  y = CTI,
                  fill = Era,
                  color = Era)) +
   geom_line(data = filter(final_community_data,
                           Region == 'SS',
                           Era == 'H'),
-            aes(x = Elev,
+            aes(x = Elevtr,
                 y = predict.glm(SSH_CTI_model)),
             size = 1.5,
             alpha = 0.5,
@@ -493,7 +493,7 @@ final_community_data %>%
                           Region == 'SS',
                           Era == 'M',
                           CTI != 'NA'),
-            aes(x = Elev,
+            aes(x = Elevtr,
                 y = predict.glm(SSM_CTI_model)),
             size = 1.5,
             alpha = 0.5,
@@ -508,7 +508,7 @@ final_community_data %>%
 final_community_data %>% 
   filter(Region == 'YO') %>% 
   ggplot()+
-  geom_point(aes(x = Elev,
+  geom_point(aes(x = Elevtr,
                  y = CTI,
                  fill = Era,
                  color = Era)) +
@@ -516,14 +516,14 @@ final_community_data %>%
                           Region == 'YO',
                           Era == 'H',
                           CTI != 'NA'),
-            aes(x = Elev,
+            aes(x = Elevtr,
                 y = predict.glm(YOH_CTI_model)),
             color = 'red') +
   geom_line(data = filter(final_community_data,
                           Region == 'YO',
                           Era == 'M',
                           CTI != 'NA'),
-            aes(x = Elev,
+            aes(x = Elevtr,
                 y = predict.glm(YOM_CTI_model)),
             color = 'blue') +
   labs(title = "CTI - Yosemite")
@@ -533,21 +533,21 @@ final_community_data %>%
 final_community_data %>% 
   filter(Region == 'SS') %>% 
   ggplot()+
-  geom_point(aes(x = Elev,
+  geom_point(aes(x = Elevtr,
                  y = CPI,
                  fill = Era,
                  color = Era)) +
   geom_line(data = filter(final_community_data,
                           Region == 'SS',
                           Era == 'H'),
-            aes(x = Elev,
+            aes(x = Elevtr,
                 y = predict.glm(SSH_CPI_model)),
             color = 'red') +
   geom_line(data = filter(final_community_data,
                           Region == 'SS',
                           Era == 'M',
                           CPI != 'NA'),
-            aes(x = Elev,
+            aes(x = Elevtr,
                 y = predict.glm(SSM_CPI_model)),
             color = 'blue') + 
   labs(title = "CPI - Sequoia")
@@ -556,7 +556,7 @@ final_community_data %>%
 final_community_data %>% 
   filter(Region == 'YO') %>% 
   ggplot()+
-  geom_point(aes(x = Elev,
+  geom_point(aes(x = Elevtr,
                  y = CPI,
                  fill = Era,
                  color = Era)) +
@@ -564,14 +564,14 @@ final_community_data %>%
                           Region == 'YO',
                           Era == 'H',
                           CPI != 'NA'),
-            aes(x = Elev,
+            aes(x = Elevtr,
                 y = predict.glm(YOH_CPI_model)),
             color = 'red') +
   geom_line(data = filter(final_community_data,
                           Region == 'YO',
                           Era == 'M',
                           CPI != 'NA'),
-            aes(x = Elev,
+            aes(x = Elevtr,
                 y = predict.glm(YOM_CPI_model)),
             color = 'blue') +
   labs(title = "CPI - Yosemite")
@@ -580,30 +580,53 @@ final_community_data %>%
 # Method Plot
 
 ```{r}
+light_color = '#'
+dark_color = '#'
+
 (SS_method_plot <- pfa_data %>% 
     na.omit() %>% 
   filter(Region == "SS",
          Era == "H" |
            Era == "M",
-         species_name != 'Sorextenellus') %>% #only found at one site (no elevational range) and doesn't show up correctly on this methods figure 
+         species_name != 'Sorextenellus') %>% #only found at one site (no Elevtrational range) and doesn't show up correctly on this methods figure 
    mutate(Era = as.factor(Era)) %>% 
 ggplot(aes(color = Era,
-           size = Era)) +
+           size = Era))  +
+    geom_hline(yintercept = c(filter(community_data,
+                                     Era == 'HM' &
+                                     Region == 'SS')$Elevtr),
+               linetype = 3,
+               color = 'black',
+               alpha = 0.3) +
   geom_linerange(aes(x = reorder(species_name,
                                  species_min),
                    ymin = species_min,
                    ymax = species_max)) +
-    geom_hline(yintercept = 3000,
-               linetype = 2) +
     scale_x_discrete(labels = c(paste0('sp', 1:length(unique(pfa_data$species_name))))) +
     scale_color_manual(values = c('#664596ff','#eb8055ff')) +
     # scale_alpha_manual(values = c(0.5,.8)) +
     scale_size_manual(values = c(4,2)) +
-    theme(axis.text.x = element_text(angle = 45,
+    ylab("Elevtation (m)") +
+    theme(axis.text = element_text(family = 'Canela',
+                                   size = 14,
+                                   color = 'black'),
+          axis.text.x = element_text(angle = 45,
                                      vjust = 0.5),
-          legend.position = 'top',
+          legend.position = 'none',
           panel.background = element_blank(),
-          axis.title.x = element_blank())
+          axis.title.y = element_text(color = '#2F3A25',
+                                      size = 24,
+                                      family = 'Canela'),
+          axis.title.x = element_blank(),
+          axis.line.y = element_line(color = 'black',
+                                   size = 1),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = '#E2E6D1',
+                                       size = 0),
+          plot.margin = margin(t = 0,  # Top margin
+                             r = 0,  # Right margin
+                             b = 0,  # Bottom margin
+                             l = 0))
   )
 
 (YO_method_plot <- pfa_data %>% 
@@ -611,16 +634,20 @@ ggplot(aes(color = Era,
   filter(Region == "YO",
          Era == "H" |
            Era == "M",
-         species_name != 'Sorextenellus') %>% #only found at one site (no elevational range) and doesn't show up correctly on this methods figure 
+         species_name != 'Sorextenellus') %>% #only found at one site (no Elevtrational range) and doesn't show up correctly on this methods figure 
    mutate(Era = as.factor(Era)) %>% 
 ggplot(aes(color = Era,
            size = Era)) +
+    geom_hline(yintercept = c(filter(community_data,
+                                     Era == 'HM' &
+                                     Region == 'YO')$Elevtr),
+               linetype = 3,
+               color = 'black',
+               alpha = 0.3) +
   geom_linerange(aes(x = reorder(species_name,
                                  species_min),
                    ymin = species_min,
                    ymax = species_max)) +
-    geom_hline(yintercept = 3000,
-               linetype = 2) +
     scale_x_discrete(labels = c(paste0('sp', 1:length(unique(pfa_data$species_name))))) +
     scale_color_manual(values = c('#664596ff','#eb8055ff')) +
     # scale_alpha_manual(values = c(0.5,.8)) +
@@ -629,22 +656,94 @@ ggplot(aes(color = Era,
                                      vjust = 0.5),
           legend.position = 'top',
           panel.background = element_blank(),
-          axis.title.x = element_blank())
+          axis.title.x = element_blank(),
+          text = element_text(color = 'black',
+                              family = 'Canela'))
   )
 
 ggsave(YO_method_plot,
        filename = '/Users/ethanabercrombie/Library/CloudStorage/Box-Box/EthanAbercrombie/Presentations/ESA_2022/YO_method_plot.jpg',
-       width = 10,
-       height = 5,
+       width = 7.5,
+       height = 3.75,
        units = 'in',
        dpi = 300)
 
 ggsave(SS_method_plot,
        filename = '/Users/ethanabercrombie/Library/CloudStorage/Box-Box/EthanAbercrombie/Presentations/ESA_2022/SS_method_plot.jpg',
-       width = 10,
-       height = 5,
+       width = 10.5,
+       height = 4.5,
        units = 'in',
        dpi = 300)
+
+```
+
+
+# Beta-diversity Analysis
+
+Until I wait long enough to access elevtr, I need to use my saved dataframe for analyses. Temp code chunk below.
+
+```{r}
+#Remove
+```
+
+
+
+```{r}
+
+
+#This code chunk is a rough draft to get ideas out.
+
+require(vegan)
+
+#Create a for loop that selects generates a two-row community matrix for each site (historical and modern eras). These matrices will be used in vegan functions to calculate presence/absence beta-diversity indeces.
+
+#Returns species x site
+
+
+beta_div_data <- final_community_data %>%
+  filter(Era == "H" |
+           Era == "HM") %>% 
+  select(-(CTI:longitude)) %>%
+  mutate(site_name = gsub("_HM",
+                          "",
+                          site_name)) %>%
+  group_split(site_name)
+
+beta_diversity_tibble <- tibble(
+  .rows = length(beta_div_data),
+  beta_diversity = NA,
+  site_name = NA
+)
+  
+for (i in 1:length(beta_div_data)) {
+  
+  beta_div_data_loop <<- beta_div_data[[i]] %>% 
+    mutate(site_name = if_else(duplicated(site_name),
+                             paste0(site_name,
+                                    "_HM"),
+                             site_name)) %>% 
+  column_to_rownames(var = 'site_name') %>% 
+  replace(is.na(.), 0)
+  
+ beta_diversity_tibble[i,'beta_diversity'] <- as.numeric(
+   vegdist(beta_div_data_loop,
+          method = 'jaccard')
+ )
+ 
+ beta_diversity_tibble[i,'site_name'] <- unique(beta_div_data[[i]][["site_name"]])
+}  
+
+final_community_data <- left_join(
+  final_community_data,
+  beta_diversity_tibble,
+  by = 'site_name'
+)
+
+ggplot(data = final_community_data %>% 
+         filter(!is.na(beta_diversity))) +
+  geom_point(aes(x = Elevtr,
+                 y = beta_diversity)) +
+  facet_grid(vars(Region))
 
 ```
 
