@@ -1,0 +1,324 @@
+---
+title: "data_cleaning"
+author: "Ethan Abercrombie"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Packages
+
+```{r packages, include=FALSE}
+#packages
+require(tidyverse)
+require(reshape2)
+require(sf)
+require(vegan) #For beta-diversity analyses
+```
+
+# Load Data
+
+```{r load_data}
+#sp_climate_data
+sp_climate_data <- read_csv('/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinnell-Mammal-Community-Shifts/Data/Climate Data/species_climate_preferences.csv') %>% 
+  mutate_at("species_name", str_replace, "_", "") #Remove '_' to match object 'pfa_data'
+```
+
+
+# PFA Data
+
+```{r data, include=FALSE}
+#load data
+pfa_data <- read_csv('/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinnell-Mammal-Community-Shifts/Rowe et al. 2017 - FINAL Occupancy Analyses/PFA ANALYSES/WPFA_results_08Mar2011.csv') %>% 
+  rename(transect_boundary = "...1") %>% 
+  filter(str_detect(transect_boundary,
+                    '0') |
+           str_detect(transect_boundary,
+                      '1')) %>% #Filter data to select for species minimum and maximum elevation.
+  mutate(Region = case_when(str_detect(transect_boundary,
+                                         'SS') ~ 'SS',
+                              str_detect(transect_boundary,
+                                         'LA') ~ 'LA',
+                              str_detect(transect_boundary,
+                                         'YO') ~ 'YO'),
+         Era = case_when(str_detect(transect_boundary,
+                                    '0') ~ 'H',
+                         str_detect(transect_boundary,
+                                    '1') ~ 'M'),
+         Marmotaflaviventris = c(1561,1971,
+                                 1561,1971+520,
+                                 2469,3353,
+                                 2469,3353,
+                                 2268,3503,
+                                 2268,3503) ,
+         Ochotonaprinceps = c(1478,2514,
+                              1478,2514,
+                              2377,3871,
+                              2377,3871,
+                              2732,3384,
+                              2732,3384),
+         Sciurusgriseus = c(103,1051,
+                            103,1051+671,
+                            183,1951,
+                            183,1951-262,
+                            787,2364,
+                            787+720,2364-750),
+         Tamiasciurusdouglasii = c(886,2061,
+                                   886,2061+430,
+                                   1229,3185,
+                                   1229,3185,
+                                   1592,3384,
+                                   1592,3384),
+         Thomomysbottae = c(75,1335,
+                            75,1335,
+                            57,1676,
+                            57,1676,
+                            118,3384,
+                            118,3384),
+         Thomomysmonticola = c(1561,2514,
+                               1561,2514,
+                               1905,3155,
+                               1905,3155,
+                               NA,NA,
+                               NA,NA))
+pfa_data <- pfa_data %>% 
+  bind_rows(filter(pfa_data,
+                   Era == 'M')) %>% 
+  mutate(Era = if_else(duplicated(transect_boundary),
+                       "HM",
+                       Era))
+
+pfa_data <- melt(pfa_data,
+          id.vars = c('transect_boundary',
+                      'Region',
+                      'Era'),
+          value.name = 'species_elevation',
+          variable.name = 'species_name') %>% 
+  group_by(Region,
+           Era,
+           species_name) %>% 
+  mutate(species_min = min(species_elevation),
+         species_max = max(species_elevation)) %>% 
+  dplyr::select(-transect_boundary,
+         -species_elevation) %>% 
+  distinct()
+
+#Save pfa_data
+write_csv(pfa_data,
+          file = "~/Desktop/Grinnell-Mammal-Community-Shifts/Data/pfa_data_clean.csv")
+```
+
+```{r data, include=FALSE}
+#Define species list. Sort alphabetically and remove "_" to match PFA data.
+species_list <- c('Sorex_ornatus',
+                  'Dipodomys_heermanni',
+                  'Microtus_californicus',
+                  'Reithrodontomys_megalotis',
+                  'Chaetodipus_californicus',
+                  'Neotoma_fuscipes',
+                  'Neotoma_macrotis',
+                  'Peromyscus_truei',
+                  'Sciurus_griseus',
+                  'Dipodomys_agilis',
+                  'Tamias_merriami',
+                  'Peromyscus_boylii',
+                  'Thomomys_bottae',
+                  'Otospermophilus_beecheyi',
+                  'Sorex_trowbridgii',
+                  'Tamias_quadrimaculatus',
+                  'Sorex_vagrans',
+                  'Tamias_senex',
+                  'Tamiasciurus_douglasii',
+                  'Zapus_princeps',
+                  'Microtus_montanus',
+                  'Microtus_longicaudus',
+                  'Thomomys_monticola',
+                  'Neotoma_cinerea',
+                  'Tamias_speciosus',
+                  'Tamias_amoenus',
+                  'Sorex_palustris',
+                  'Marmota_flaviventris',
+                  'Urocitellus_beldingi',
+                  'Callospermophilus_lateralis',
+                  'Sorex_monticolus',
+                  'Ochotona_princeps',
+                  'Tamias_alpinus') %>% 
+  str_sort() %>% 
+  str_remove('[_]') #Remove '_' to match object 'pfa_data'
+```
+
+# Site Data
+
+```{r data, include=FALSE}
+#load site data. Filter to exclude species and psi columns
+site_data_ <- read_csv('/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinnell-Mammal-Community-Shifts/Rowe et al. 2017 - FINAL Occupancy Analyses/R Scripts and Mark Data/PSI-by-Site-08mar2011.csv') %>% 
+  rename(site_name = AggregateName) %>%
+  distinct(site_name,
+           .keep_all = T) #This results in a single copy of site information. .keep all argument keeps all columns.
+
+site_data <- site_data_ %>% 
+  bind_rows(filter(site_data_,
+                   Era == 'H')) %>% #Make duplicates of historical site, and rename Era to "HM". This will be used to calculate contemporary CCIs for historical sites. 
+  mutate(Era = if_else(duplicated(site_name),
+                       "HM",
+                       Era),
+         Elev_prism = NA) %>% 
+  relocate(Elev_prism,
+           .after = Elev) %>% 
+  select(-Species,
+         -`Elevation Estimated PSI`)
+
+#Add elevation data from PRISM rasters.
+  prism_elev_data <- terra::rast("/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/Geospatial Data/PRISM_us_dem_800m.tif")
+
+  site_data_sf <- site_data %>% 
+    st_as_sf(coords = c('longitude',
+                        'latitude'),
+             crs = st_crs("EPSG:4269"))
+  
+  site_data <- site_data %>% 
+    mutate(Elev_prism = raster::extract(prism_elev_data,
+                       y = site_data_sf)[,2])
+```
+
+```{r community_climate_indeces, include=FALSE}
+#For loop for every site CCI
+for (i in 1:nrow(site_data)) {
+  print(i)
+  #Create a temporary object that is the filtered results of pfa_data (elevational distributions) that matches the Region and Era for each site. These distributions are used to determine which species are present at each site.
+  pfa_loop <- pfa_data %>% 
+    filter(Region %in% site_data[i,] &
+             Era %in% site_data[i,])
+  
+  #Assign a value of 1 (present) to species within the elevation range defined in 'pfa_data'
+  for (sp in unique(species_list)) {
+    #print(sp)
+    pfa_loop_2 <- pfa_loop %>% 
+    filter(species_name == sp)
+    site_data[i,sp] <- case_when(site_data[i, 'Elev_prism'] >= pfa_loop_2$species_min &
+                                      site_data[i, 'Elev_prism'] <= pfa_loop_2$species_max ~ 1,
+                                      site_data[i, 'Elev_prism'] < pfa_loop_2$species_min ~ 0,
+                                      site_data[i, 'Elev_prism'] > pfa_loop_2$species_max ~ 0)
+  }
+  
+}
+
+#Community climate affinities 
+community_data <- site_data %>% 
+  select(any_of(sp_climate_data$species_name)) %>% 
+  t() 
+colnames(community_data) <- site_data$site_name
+  
+  
+  #Community temperature index
+  community_data_MAT <- community_data * sp_climate_data$MAT
+  community_data_MAT[community_data_MAT == 0] <- NA
+  community_data_MAT <- community_data_MAT %>% 
+    t() %>% 
+    as.data.frame() %>% 
+    rowwise() %>% 
+    mutate(CTI = median(c_across(everything()),
+                           na.rm = T))
+  community_data_MAT <- as.data.frame(community_data_MAT) %>% 
+    mutate(site_name = site_data$site_name) %>% 
+    select(site_name,
+           CTI)
+  
+  #Community precipitation index
+  community_data_MAP <- community_data * sp_climate_data$MAP
+  community_data_MAP[community_data_MAP == 0] <- NA
+  community_data_MAP <- community_data_MAP %>% 
+    t() %>% 
+    as.data.frame() %>% 
+    rowwise() %>% 
+    mutate(CPI = median(c_across(everything()),
+                           na.rm = T))
+  community_data_MAP <- as.data.frame(community_data_MAP) %>% 
+    mutate(site_name = site_data$site_name) %>% 
+    select(site_name,
+           CPI)
+
+  #Add community climate indices to site_data
+  site_data <- left_join(x = site_data,
+                 y = community_data_MAT,
+                 by = "site_name") %>% 
+    left_join(y = community_data_MAP,
+              by = "site_name") %>% 
+    relocate(c(CTI,CPI),
+             .after = site_name)
+  
+#Save site_data
+  write_csv(site_data,
+          file = "~/Desktop/Grinnell-Mammal-Community-Shifts/Data/site_data_clean.csv")
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+#This code is used to create the conservative communities, but needs more development.
+# site_data <- site_data %>% 
+#   group_by(Region,
+#            Era) %>% 
+#   arrange(Elev) %>% 
+#   mutate(elev_rank = 1:n()) %>% 
+#   ungroup() #Remove Lassen until we figure out what's happening at this site.
+
+for (species in species_list) {
+  pfa_data_loop<<- filter(pfa_data,
+                          species_name == species &
+                            Era != 'H') %>% 
+    group_by(Region)
+}
+
+x <- filter(pfa_data,
+            species_name == species_list[1] &
+              Era == 'HM' &
+              Region == "LA")
+
+sp_min_elev_present <-x$species_min
+
+site_data_loop <- site_data %>%
+  filter(Elev <= sp_min_elev_present &
+           Region == x$Region,
+         Era == 'HM')
+
+delta_elev_m <- abs(site_data_loop$Elev - sp_min_elev_present)
+x$species_min_retract_conserv <- min(delta_elev_m) + 1
+
+for (species in species_list) {
+  
+  
+  
+}
+
+```
+
+```{r CCI, include=FALSE}
+#### to load data
+final_community_data <- read_csv('~/Desktop/Grinnell-Mammal-Community-Shifts/Data/site_data/community_data.csv')
+  
+final_community_data %>% 
+  ggplot(aes(x = Elevtr,
+             y = CPI)) +
+  geom_point(aes(color = Era)) +
+  facet_grid(rows = vars(Region))
+
+final_community_data %>% 
+  ggplot(aes(x = Elevtr,
+             y = CTI)) +
+  geom_point(aes(color = Era)) +
+  facet_grid(rows = vars(Region))
+
+(final_community_data %>% 
+  group_by(Region,
+           Era) %>% 
+  summarise(number_species = length(Region),
+            elv_range <- range(Elevtr)))
+
+```
