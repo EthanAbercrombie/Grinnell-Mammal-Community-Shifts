@@ -47,6 +47,7 @@ collateDfs <- function(folder, ...) {
                     datasetID,
                     collectionID,
                     locationID))
+        
         df <- list(df, thisDf) %>% 
           bind_rows() %>% 
           type_convert()
@@ -69,4 +70,4 @@ occurrence_data_merged <- occurrence_data_merged %>%
 
 #Save merged csv file
 readr::write_csv(occurrence_data_merged,
-                 file = '~/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_data/occurrence_data_clean/occurrence_data_merged.csv')
+                 file = '~/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_data/occurrence_data_merged.csv')
