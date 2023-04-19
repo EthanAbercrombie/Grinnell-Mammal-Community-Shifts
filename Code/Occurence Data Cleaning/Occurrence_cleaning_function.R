@@ -2,6 +2,7 @@
 require(sf)
 require(tidyverse)
 
+
 ###
 #load spatial data
 ###
@@ -16,7 +17,8 @@ states <- st_transform(st_read('/Users/ethanabercrombie/Desktop/Spatial_Data/gad
 
 #Define species in study.
 
-species_list <- c('Sorex_ornatus',
+species_list <- c('Peromyscus_maniculatus_sonoriensis',
+'Sorex_ornatus',
                                     'Dipodomys_heermanni',
                                     'Microtus_californicus',
                                     'Reithrodontomys_megalotis',
@@ -49,9 +51,6 @@ species_list <- c('Sorex_ornatus',
                                     'Sorex_monticolus',
                                     'Ochotona_princeps',
                                     'Tamias_alpinus')
-# Peromyscus_maniculatus not included.
-
-species_list <- c('Marmota_flaviventris')
 
 #Create empty dataframe to store filtering results.
 #The values are added in the occurrence_filtering function.
@@ -79,7 +78,7 @@ for (i in 1:length(species_list)) {
   occurrence_plot()
 }
 
-#Save metadata file
+ #Save metadata file
 occurrence_metadata <- occurrence_metadata %>% 
   mutate(prop_inside = round(within_buffer/filtered_records,
                              digits = 2))
@@ -104,9 +103,6 @@ occurrence_plot <- function(){
             color = 'yellow',
             fill = NA,
             inherit.aes = F) +
-    geom_hex(data = as.data.frame(st_coordinates(speciesSf_filtered)),
-             aes(x = X,
-                 y = Y)) +
     theme() +
     coord_sf(xlim = c(pmin(occ_bounding_box[1],
                            rangeMap_bounding_box[1]),
@@ -144,7 +140,8 @@ occurrence_cleaning <- function(){
              type=='Occurrence' |
              type=="Collection" |
              type=='Physical Object' |
-             type == 'Objeto fÃsico') %>% 
+             type == 'Objeto fÃsico') %>%
+    mutate_if(is.character, list(~na_if(.,""))) %>% #This removes empty coordinates stored as a blankspace "".
     filter(!is.na(decimalLatitude) & 
              !is.na(decimalLongitude))
   
@@ -174,7 +171,7 @@ occurrence_cleaning <- function(){
            within_exclusion = lengths(st_within(x = species_alb, 
                                                 y = exclusion_buffer)),
            species_name = species_name) %>% 
-    filter(year >= 1970) %>% 
+    # filter(year >= 1970) %>% #I have a feeling this should not be here as my climate extractio takes into consideration when the occurrence was collected.
     filter(coordinateUncertaintyInMeters <= 1000 | is.na(coordinateUncertaintyInMeters)) %>% 
     filter(!(coordinateUncertaintyInMeters == "NA" &
                within_range == 0),
@@ -207,82 +204,10 @@ occurrence_cleaning <- function(){
                                                                                                      within_buffer == 0))
   return(speciesSf_filtered)
 }
-     #file = 'C:/Grinnell-Mammal-Community-Shifts/Data/occurrence_metadata.Rdata')
 
-
-####
-#Clean P. maniculatus separately.
-
-####
-
-
-####
-####
-
-#Several species have occurrences outside the 80km buffer. Some of these seem fine to include, others need more investigation.
-#The code below investigates these occurrences.
-
-#Redefine the species list to investigate each species in question independently.
- species_list <- c(
-#   'Sorex_ornatus',
-#                   'Dipodomys_heermanni'
-#                   'Microtus_californicus',
-#                   'Reithrodontomys_megalotis',
-#                   'Chaetodipus_californicus',
-#                   'Neotoma_fuscipes',
-#                   'Neotoma_macrotis',
-#                   'Peromyscus_truei'
-#                   'Sciurus_griseus',
-#                   'Dipodomys_agilis'
-#                   'Tamias_merriami',
-#                   'Peromyscus_boylii',
-#                   'Thomomys_bottae',
-#                   'Otospermophilus_beecheyi',
-#                   'Sorex_trowbridgii',
-#                   'Tamias_quadrimaculatus',
-#                   'Sorex_vagrans',
-#                   'Tamias_senex',
-#                   'Tamiasciurus_douglasii',
-#                   'Zapus_princeps',
-#                   'Microtus_montanus'
-#                   'Microtus_longicaudus',
-#                   'Thomomys_monticola',
-#                   'Neotoma_cinerea',
-#                   'Tamias_speciosus',
-#                   'Tamias_amoenus',
-#                   'Sorex_palustris',
-#                   'Marmota_flaviventris',
-#                   'Urocitellus_beldingi',
-#                   'Callospermophilus_lateralis',
-#                   'Sorex_monticolus',
-#                   'Ochotona_princeps',
-#                   'Tamias_alpinus'
-)
- 
-#Use the for loop from above to apply cleaning function.
-
-#Create new occurrence metadata tibble (will be 1 row if for each species indepently).
-#SAVE METADATA FROM ABOVE TO KEEP ALL SPECIES INFORMATION. CODE TO SAVE ALREADY INCLUDED.
-occurrence_metadata <- tibble(species = species_list,
-                              filtered_records = NA,
-                              within_range = NA,
-                              within_buffer = NA,
-                              outside_buffer = NA)
-
-for (i in 1:length(species_list)) {
-  species_name <- species_list[i]
-  occurrence_data <- read.delim(paste0('/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_data/',species_name,'/occurrence.txt'))
-  rangeMap <- st_transform(sf::st_read(paste0('/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/IUCN Species Ranges/Species Ranges_Exports_QGIS/',
-                                              species_name,
-                                              '/',
-                                              species_name,
-                                              '.shp')),
-                           enmSdm::getCRS('albersNA'))
-  
-  speciesSf_filtered <- occurrence_cleaning()
-}
-
-#Look at occurrences not within buffer.
+#Save metadata
+save(occurrence_metadata,
+     file = '/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_metadata.Rdata')
 
 occ_issue <- speciesSf_filtered %>% 
   filter(within_buffer == 0)
