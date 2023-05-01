@@ -13,6 +13,7 @@ require(tidyverse)
 require(reshape2)
 require(sf)
 require(vegan) #For beta-diversity analyses
+require(betapart) #For beta.temp function - temporal beta diversity
 ```
  
 # Load Data
@@ -22,8 +23,9 @@ require(vegan) #For beta-diversity analyses
 site_data <- read_csv('~/Desktop/Grinnell-Mammal-Community-Shifts/Data/site_data_clean.csv')
 
 #sp_climate_data
-sp_climate_data <- read_csv('/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinnell-Mammal-Community-Shifts/Data/Climate Data/species_climate_preferences.csv') %>% 
-  mutate_at("species_name", str_replace, "_", "") #Remove '_' to match object 'pfa_data'
+sp_climate_data <- read_csv('~/Desktop/Grinnell-Mammal-Community-Shifts/Data/climate_data/species_climate_preferences.csv') %>% 
+  mutate(species_name = str_replace_all(species_name,
+                                    "_",""))
 
 #pfa_data
 pfa_data <- read_csv('~/Desktop/Grinnell-Mammal-Community-Shifts/Data/pfa_data_clean.csv')
@@ -32,482 +34,151 @@ pfa_data <- read_csv('~/Desktop/Grinnell-Mammal-Community-Shifts/Data/pfa_data_c
 species_list <- sp_climate_data$species_name
 ```
 
-Create community x site matrices
-
-
-
-# Analysis
-
-# Boxplots
-
 ```{r}
-range = c(0,250,750,1250,1750,2250,2750,3250)
-range_lab <- c('0-250','250-750','750-1250','1250-1750','1750-2250','2250-2750','>2750')
-
-filter(final_community_data,
-       Era == 'H' |
-         Era == 'HM') %>% 
-  ggplot(aes(x = cut(Elevtr,
-                     breaks = range),
-             y = CTI)) +
-  geom_boxplot(aes(color = Era)) +
-  scale_x_discrete(labels = range_lab) +
-  facet_grid(rows = vars(Region)) +
-  labs(x = 'Elevation')
-
-final_community_data %>% 
-  ggplot(aes(x = cut(Elevtr,
-                     breaks = range),
-             y = CPI)) +
-  geom_boxplot(aes(color = Era)) +
-  scale_x_discrete(labels = range_lab) +
-  facet_grid(rows = vars(Region)) +
-  labs(x = 'Elevation')
-```
-
-# Spline Regressions
-
-```{r}
-final_community_data %>%  
-  ggplot(mapping = aes(x = Elevtr,
-                       y = CTI)) +
-  geom_point(aes(color = Era)) +
-  geom_smooth(aes(color = Era)) +
-  facet_grid(rows = 'Region')
-
-range <- 1:5
-
-####
-#Choose best CTI model using AIC.
-####
-spline_df_CTI <- tibble(
-  df_CTI_YO_H = range,
-  AIC_CTI_YO_H = NA,
-  df_CTI_YO_M = range,
-  AIC_CTI_YO_M = NA,
-  df_CTI_SS_H = range,
-  AIC_CTI_SS_H = NA,
-  df_CTI_SS_M = range,
-  AIC_CTI_SS_M = NA
-)
-
-for (i in 1:nrow(spline_df_CTI)) {
-  
-  #YO historic
-  model <- glm(data = filter(final_community_data,
-                             Region == 'YO',
-                             Era == 'H'),
-               CTI ~ splines::ns(Elevtr,
-                                df = i))
-  spline_df_CTI[i,'AIC_CTI_YO_H'] <- AIC(model)
-  
-  #YO modern
-  model <- glm(data = filter(final_community_data,
-                             Region == 'YO',
-                             Era == 'M'),
-               CTI ~ splines::ns(Elevtr,
-                                df = i))
-  spline_df_CTI[i,'AIC_CTI_YO_M'] <- AIC(model)
-  
-  #SS historic
-  model <- glm(data = filter(final_community_data,
-                             Region == 'SS',
-                             Era == 'H'),
-               CTI ~ splines::ns(Elevtr,
-                                df = i))
-  spline_df_CTI[i,'AIC_CTI_SS_H'] <- AIC(model)
-  
-  #SS modern
-  model <- glm(data = filter(final_community_data,
-                             Region == 'SS',
-                             Era == 'M'),
-               CTI ~ splines::ns(Elevtr,
-                                df = i))
-  spline_df_CTI[i,'AIC_CTI_SS_M'] <- AIC(model)
-}
-
-####
-#Choose best CPI model using AIC.
-####
-
-spline_df_CPI <- tibble(
-  df_CPI_YO_H = range,
-  AIC_CPI_YO_H = NA,
-  df_CPI_YO_M = range,
-  AIC_CPI_YO_M = NA,
-  df_CPI_SS_H = range,
-  AIC_CPI_SS_H = NA,
-  df_CPI_SS_M = range,
-  AIC_CPI_SS_M = NA
-)
-
-for (i in 1:nrow(spline_df_CPI)) {
-  
-  #YO historic
-  model <- glm(data = filter(final_community_data,
-                             Region == 'YO',
-                             Era == 'H'),
-               CPI ~ splines::ns(Elevtr,
-                                df = i))
-  spline_df_CPI[i,'AIC_CPI_YO_H'] <- AIC(model)
-  
-  #YO modern
-  model <- glm(data = filter(final_community_data,
-                             Region == 'YO',
-                             Era == 'M'),
-               CPI ~ splines::ns(Elevtr,
-                                df = i))
-  spline_df_CPI[i,'AIC_CPI_YO_M'] <- AIC(model)
-  
-  #SS historic
-  model <- glm(data = filter(final_community_data,
-                             Region == 'SS',
-                             Era == 'H'),
-               CPI ~ splines::ns(Elevtr,
-                                df = i))
-  spline_df_CPI[i,'AIC_CPI_SS_H'] <- AIC(model)
-  
-  #SS modern
-  model <- glm(data = filter(final_community_data,
-                             Region == 'SS',
-                             Era == 'M'),
-               CPI ~ splines::ns(Elevtr,
-                                df = i))
-  spline_df_CPI[i,'AIC_CPI_SS_M'] <- AIC(model)
-}
-
-#Select the lowest AIC
-
-##YO Historic
-### CTI
-YOH_CTI_model <- model <- glm(data = filter(final_community_data,
-                             Region == 'YO',
-                             Era == 'H'),
-               CTI ~ splines::ns(Elevtr,
-                                df = spline_df_CTI[[which.min(spline_df_CTI$AIC_CTI_YO_H),'df_CTI_YO_H']]))
-### CPI
-YOH_CPI_model <- model <- glm(data = filter(final_community_data,
-                             Region == 'YO',
-                             Era == 'H'),
-               CPI ~ splines::ns(Elevtr,
-                                df = spline_df_CPI[[which.min(spline_df_CPI$AIC_CPI_YO_H),'df_CPI_YO_H']]))  
-
-##YO Modern
-### CTI
-YOM_CTI_model <- model <- glm(data = filter(final_community_data,
-                             Region == 'YO',
-                             Era == 'M'),
-               CTI ~ splines::ns(Elevtr,
-                                df = spline_df_CTI[[which.min(spline_df_CTI$AIC_CTI_YO_M),'df_CTI_YO_M']]))
-### CPI
-YOM_CPI_model <- model <- glm(data = filter(final_community_data,
-                             Region == 'YO',
-                             Era == 'M'),
-               CPI ~ splines::ns(Elevtr,
-                                df = spline_df_CPI[[which.min(spline_df_CPI$AIC_CPI_YO_M),'df_CPI_YO_M']])) 
-##SS Historic
-### CTI
-SSH_CTI_model <- model <- glm(data = filter(final_community_data,
-                             Region == 'SS',
-                             Era == 'H'),
-               CTI ~ splines::ns(Elevtr,
-                                df = spline_df_CTI[[which.min(spline_df_CTI$AIC_CTI_SS_H),'df_CTI_SS_H']]))
-### CPI
-SSH_CPI_model <- model <- glm(data = filter(final_community_data,
-                             Region == 'SS',
-                             Era == 'H'),
-               CPI ~ splines::ns(Elevtr,
-                                df = spline_df_CPI[[which.min(spline_df_CPI$AIC_CPI_SS_H),'df_CPI_SS_H']])) 
-## SS Modern
-### CTI
-SSM_CTI_model <- model <- glm(data = filter(final_community_data,
-                             Region == 'SS',
-                             Era == 'M'),
-               CTI ~ splines::ns(Elevtr,
-                                df = spline_df_CTI[[which.min(spline_df_CTI$AIC_CTI_SS_M),'df_CTI_SS_M']]))
-### CPI
-SSM_CPI_model <- model <- glm(data = filter(final_community_data,
-                             Region == 'SS',
-                             Era == 'M'),
-               CPI ~ splines::ns(Elevtr,
-                                df = spline_df_CPI[[which.min(spline_df_CPI$AIC_CPI_SS_M),'df_CPI_SS_M']])) 
-```
-
-#Spline Graphs
-
-```{r}
-#CTI
-##Sequoi & Kings Canyon
-final_community_data %>% 
-  filter(Region == 'SS') %>% 
-  ggplot()+
-  geom_point(aes(x = Elevtr,
-                 y = CTI,
-                 fill = Era,
-                 color = Era)) +
-  geom_line(data = filter(final_community_data,
-                          Region == 'SS',
-                          Era == 'H'),
-            aes(x = Elevtr,
-                y = predict.glm(SSH_CTI_model)),
-            size = 1.5,
-            alpha = 0.5,
-            color = 'red') +
-  geom_line(data = filter(final_community_data,
-                          Region == 'SS',
-                          Era == 'M',
-                          CTI != 'NA'),
-            aes(x = Elevtr,
-                y = predict.glm(SSM_CTI_model)),
-            size = 1.5,
-            alpha = 0.5,
-            color = 'blue') +
-  annotate('text',
-           x = 5,
-           y = 5,
-           label = paste(df.residual(SSM_CTI_model))) +
-  labs(title = "CTI - Sequoia")
-
 #Yosemite
-final_community_data %>% 
-  filter(Region == 'YO') %>% 
-  ggplot()+
-  geom_point(aes(x = Elevtr,
-                 y = CTI,
-                 fill = Era,
-                 color = Era)) +
-  geom_line(data = filter(final_community_data,
-                          Region == 'YO',
-                          Era == 'H',
-                          CTI != 'NA'),
-            aes(x = Elevtr,
-                y = predict.glm(YOH_CTI_model)),
-            color = 'red') +
-  geom_line(data = filter(final_community_data,
-                          Region == 'YO',
-                          Era == 'M',
-                          CTI != 'NA'),
-            aes(x = Elevtr,
-                y = predict.glm(YOM_CTI_model)),
-            color = 'blue') +
-  labs(title = "CTI - Yosemite")
-
-#CPI
-##Sequoi & Kings Canyon
-final_community_data %>% 
-  filter(Region == 'SS') %>% 
-  ggplot()+
-  geom_point(aes(x = Elevtr,
-                 y = CPI,
-                 fill = Era,
-                 color = Era)) +
-  geom_line(data = filter(final_community_data,
-                          Region == 'SS',
-                          Era == 'H'),
-            aes(x = Elevtr,
-                y = predict.glm(SSH_CPI_model)),
-            color = 'red') +
-  geom_line(data = filter(final_community_data,
-                          Region == 'SS',
-                          Era == 'M',
-                          CPI != 'NA'),
-            aes(x = Elevtr,
-                y = predict.glm(SSM_CPI_model)),
-            color = 'blue') + 
-  labs(title = "CPI - Sequoia")
-
-#Yosemite
-final_community_data %>% 
-  filter(Region == 'YO') %>% 
-  ggplot()+
-  geom_point(aes(x = Elevtr,
-                 y = CPI,
-                 fill = Era,
-                 color = Era)) +
-  geom_line(data = filter(final_community_data,
-                          Region == 'YO',
-                          Era == 'H',
-                          CPI != 'NA'),
-            aes(x = Elevtr,
-                y = predict.glm(YOH_CPI_model)),
-            color = 'red') +
-  geom_line(data = filter(final_community_data,
-                          Region == 'YO',
-                          Era == 'M',
-                          CPI != 'NA'),
-            aes(x = Elevtr,
-                y = predict.glm(YOM_CPI_model)),
-            color = 'blue') +
-  labs(title = "CPI - Yosemite")
-```
-
-# Method Plot
-
-```{r}
-light_color = '#'
-dark_color = '#'
-
-(SS_method_plot <- pfa_data %>% 
-    na.omit() %>% 
-  filter(Region == "SS",
-         Era == "H" |
-           Era == "M",
-         species_name != 'Sorextenellus') %>% #only found at one site (no Elevtrational range) and doesn't show up correctly on this methods figure 
-   mutate(Era = as.factor(Era)) %>% 
-ggplot(aes(color = Era,
-           size = Era))  +
-    geom_hline(yintercept = c(filter(community_data,
-                                     Era == 'HM' &
-                                     Region == 'SS')$Elevtr),
-               linetype = 3,
-               color = 'black',
-               alpha = 0.3) +
-  geom_linerange(aes(x = reorder(species_name,
-                                 species_min),
-                   ymin = species_min,
-                   ymax = species_max)) +
-    scale_x_discrete(labels = c(paste0('sp', 1:length(unique(pfa_data$species_name))))) +
-    scale_color_manual(values = c('#664596ff','#eb8055ff')) +
-    # scale_alpha_manual(values = c(0.5,.8)) +
-    scale_size_manual(values = c(4,2)) +
-    ylab("Elevtation (m)") +
-    theme(axis.text = element_text(family = 'Canela',
-                                   size = 14,
-                                   color = 'black'),
-          axis.text.x = element_text(angle = 45,
-                                     vjust = 0.5),
-          legend.position = 'none',
-          panel.background = element_blank(),
-          axis.title.y = element_text(color = '#2F3A25',
-                                      size = 24,
-                                      family = 'Canela'),
-          axis.title.x = element_blank(),
-          axis.line.y = element_line(color = 'black',
-                                   size = 1),
-          panel.grid = element_blank(),
-          plot.background = element_rect(fill = '#E2E6D1',
-                                       size = 0),
-          plot.margin = margin(t = 0,  # Top margin
-                             r = 0,  # Right margin
-                             b = 0,  # Bottom margin
-                             l = 0))
-  )
-
-(YO_method_plot <- pfa_data %>% 
-    na.omit() %>% 
-  filter(Region == "YO",
-         Era == "H" |
-           Era == "M",
-         species_name != 'Sorextenellus') %>% #only found at one site (no Elevtrational range) and doesn't show up correctly on this methods figure 
-   mutate(Era = as.factor(Era)) %>% 
-ggplot(aes(color = Era,
-           size = Era)) +
-    geom_hline(yintercept = c(filter(community_data,
-                                     Era == 'HM' &
-                                     Region == 'YO')$Elevtr),
-               linetype = 3,
-               color = 'black',
-               alpha = 0.3) +
-  geom_linerange(aes(x = reorder(species_name,
-                                 species_min),
-                   ymin = species_min,
-                   ymax = species_max)) +
-    scale_x_discrete(labels = c(paste0('sp', 1:length(unique(pfa_data$species_name))))) +
-    scale_color_manual(values = c('#664596ff','#eb8055ff')) +
-    # scale_alpha_manual(values = c(0.5,.8)) +
-    scale_size_manual(values = c(4,2)) +
-    theme(axis.text.x = element_text(angle = 45,
-                                     vjust = 0.5),
-          legend.position = 'top',
-          panel.background = element_blank(),
-          axis.title.x = element_blank(),
-          text = element_text(color = 'black',
-                              family = 'Canela'))
-  )
-
-ggsave(YO_method_plot,
-       filename = '/Users/ethanabercrombie/Library/CloudStorage/Box-Box/EthanAbercrombie/Presentations/ESA_2022/YO_method_plot.jpg',
-       width = 7.5,
-       height = 3.75,
-       units = 'in',
-       dpi = 300)
-
-ggsave(SS_method_plot,
-       filename = '/Users/ethanabercrombie/Library/CloudStorage/Box-Box/EthanAbercrombie/Presentations/ESA_2022/SS_method_plot.jpg',
-       width = 10.5,
-       height = 4.5,
-       units = 'in',
-       dpi = 300)
-
-```
-
-
-# Beta-diversity Analysis
-
-Until I wait long enough to access elevtr, I need to use my saved dataframe for analyses. Temp code chunk below.
-
-```{r}
-#Remove
-```
-
-
-
-```{r}
-
-
-#This code chunk is a rough draft to get ideas out.
-
-require(vegan)
-
-#Create a for loop that selects generates a two-row community matrix for each site (historical and modern eras). These matrices will be used in vegan functions to calculate presence/absence beta-diversity indeces.
-
-#Returns species x site
-
-
-beta_div_data <- final_community_data %>%
-  filter(Era == "H" |
-           Era == "HM") %>% 
-  select(-(CTI:longitude)) %>%
-  mutate(site_name = gsub("_HM",
-                          "",
-                          site_name)) %>%
-  group_split(site_name)
-
-beta_diversity_tibble <- tibble(
-  .rows = length(beta_div_data),
-  beta_diversity = NA,
-  site_name = NA
-)
-  
-for (i in 1:length(beta_div_data)) {
-  
-  beta_div_data_loop <<- beta_div_data[[i]] %>% 
-    mutate(site_name = if_else(duplicated(site_name),
-                             paste0(site_name,
-                                    "_HM"),
-                             site_name)) %>% 
-  column_to_rownames(var = 'site_name') %>% 
+community_data_H_YO <- site_data %>% 
+  filter(Region == "YO" &
+           Era == "H") %>% 
+  select(site_name,
+         Era,
+         any_of(species_list)) %>% 
   replace(is.na(.), 0)
   
- beta_diversity_tibble[i,'beta_diversity'] <- as.numeric(
-   vegdist(beta_div_data_loop,
-          method = 'jaccard')
- )
- 
- beta_diversity_tibble[i,'site_name'] <- unique(beta_div_data[[i]][["site_name"]])
-}  
+community_data_HM_YO <- site_data %>% 
+  filter(Region == "YO" &
+           Era == "HM") %>% 
+  select(site_name,
+         Era,
+         any_of(species_list)) %>% 
+  replace(is.na(.), 0)
 
-final_community_data <- left_join(
-  final_community_data,
-  beta_diversity_tibble,
-  by = 'site_name'
-)
 
-ggplot(data = final_community_data %>% 
-         filter(!is.na(beta_diversity))) +
-  geom_point(aes(x = Elevtr,
-                 y = beta_diversity)) +
-  facet_grid(vars(Region))
+#Sequoia & Kings Canyon
+community_data_H_SS <- site_data %>% 
+  filter(Region == "SS" &
+           Era == "H") %>% 
+  select(site_name,
+         Era,
+         any_of(species_list)) %>% 
+  replace(is.na(.), 0)
+  
+community_data_HM_SS <- site_data %>% 
+  filter(Region == "SS" &
+           Era == "HM") %>% 
+  select(site_name,
+         Era,
+         any_of(species_list)) %>% 
+  replace(is.na(.), 0)
+
+#Lassen
+community_data_H_LA <- site_data %>% 
+  filter(Region == "LA" &
+           Era == "H") %>% 
+  select(site_name,
+         Era,
+         any_of(species_list)) %>% 
+  replace(is.na(.), 0)
+  
+community_data_HM_LA <- site_data %>% 
+  filter(Region == "LA" &
+           Era == "HM") %>% 
+  select(site_name,
+         Era,
+         any_of(species_list)) %>% 
+  replace(is.na(.), 0)
+```
+
+```{r}
+#Yosemite
+{
+  beta_YO <<- beta.temp(community_data_H_YO[,-1:-2],
+          community_data_HM_YO[,-1:-2],
+          index.family = 'jaccard')
+  
+community_temp <<- community_data_HM_YO %>% 
+  mutate(beta_jtu = beta_YO$beta.jtu,
+         beta_jne = beta_YO$beta.jne,
+         beta_jac = beta_YO$beta.jac) %>% 
+  select(site_name,
+         beta_jtu,
+         beta_jne,
+         beta_jac)
+
+site_data <- site_data %>% 
+  left_join(community_temp,
+            by = 'site_name')
+}
+  
+#Sequoia & Kings Canyon
+{
+  beta_SS <<- beta.temp(community_data_H_SS[,-1:-2],
+          community_data_HM_SS[,-1:-2],
+          index.family = 'jaccard')
+  
+community_temp <<- community_data_HM_SS %>% 
+  mutate(beta_jtu = beta_SS$beta.jtu,
+         beta_jne = beta_SS$beta.jne,
+         beta_jac = beta_SS$beta.jac) %>% 
+  select(site_name,
+         beta_jtu,
+         beta_jne,
+         beta_jac)
+
+site_data <- site_data %>% 
+  rows_update(community_temp,
+              by = 'site_name')
+}
+
+#Lassen
+{
+  beta_LA <<- beta.temp(community_data_H_LA[,-1:-2],
+          community_data_HM_LA[,-1:-2],
+          index.family = 'jaccard')
+  
+community_temp <<- community_data_HM_LA %>% 
+  mutate(beta_jtu = beta_LA$beta.jtu,
+         beta_jne = beta_LA$beta.jne,
+         beta_jac = beta_LA$beta.jac) %>% 
+  select(site_name,
+         beta_jtu,
+         beta_jne,
+         beta_jac)
+
+site_data <- site_data %>% 
+  rows_update(community_temp,
+              by = 'site_name')
+}
+
+ggplot(data = site_data) +
+  geom_point(aes(x = Elev_prism,
+                 y = beta_jtu)) +
+  facet_grid(rows = 'Region')
+
+ggplot(data = site_data) +
+  geom_point(aes(x = Elev_prism,
+                 y = beta_jne)) +
+  facet_grid(rows = 'Region')
+
+ggplot(data = site_data) +
+  geom_point(aes(x = Elev_prism,
+                 y = beta_jac)) +
+  facet_grid(rows = 'Region')
+
+ggplot(data = site_data) +
+  geom_point(aes(x = temp_change,
+                 y = cti_change)) +
+  facet_grid(rows = 'Region')
+
+ggplot(data = site_data) +
+  geom_point(aes(x = precip_change,
+                 y = cpi_change)) +
+  facet_grid(rows = 'Region')
+
+site_data %>% 
+  ggplot(aes(x = temp,
+             y = CTI)) +
+  geom_point() +
+  facet_grid(rows = c('Region','Era'))
 
 ```
 
