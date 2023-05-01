@@ -12,15 +12,20 @@ output: html_document
 require(tidyverse)
 require(reshape2)
 require(sf)
-require(vegan) #For beta-diversity analyses
 ```
 
 # Load Data
 
 ```{r load_data}
 #sp_climate_data
-sp_climate_data <- read_csv('/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinnell-Mammal-Community-Shifts/Data/Climate Data/species_climate_preferences.csv') %>% 
-  mutate_at("species_name", str_replace, "_", "") #Remove '_' to match object 'pfa_data'
+sp_climate_data <- read_csv('~/Desktop/Grinnell-Mammal-Community-Shifts/Data/climate_data/species_climate_preferences.csv') %>% 
+  mutate_at("species_name", str_replace_all, "_", "") %>% 
+  mutate(species_name = str_replace(species_name,
+                                    pattern = 'Peromyscusmaniculatussonoriensis',
+                                    replacement = "Peromyscusmaniculatus"))
+
+#Save species list
+species_list <- unique(sp_climate_data$species_name)
 ```
 
 
@@ -107,45 +112,6 @@ write_csv(pfa_data,
           file = "~/Desktop/Grinnell-Mammal-Community-Shifts/Data/pfa_data_clean.csv")
 ```
 
-```{r data, include=FALSE}
-#Define species list. Sort alphabetically and remove "_" to match PFA data.
-species_list <- c('Sorex_ornatus',
-                  'Dipodomys_heermanni',
-                  'Microtus_californicus',
-                  'Reithrodontomys_megalotis',
-                  'Chaetodipus_californicus',
-                  'Neotoma_fuscipes',
-                  'Neotoma_macrotis',
-                  'Peromyscus_truei',
-                  'Sciurus_griseus',
-                  'Dipodomys_agilis',
-                  'Tamias_merriami',
-                  'Peromyscus_boylii',
-                  'Thomomys_bottae',
-                  'Otospermophilus_beecheyi',
-                  'Sorex_trowbridgii',
-                  'Tamias_quadrimaculatus',
-                  'Sorex_vagrans',
-                  'Tamias_senex',
-                  'Tamiasciurus_douglasii',
-                  'Zapus_princeps',
-                  'Microtus_montanus',
-                  'Microtus_longicaudus',
-                  'Thomomys_monticola',
-                  'Neotoma_cinerea',
-                  'Tamias_speciosus',
-                  'Tamias_amoenus',
-                  'Sorex_palustris',
-                  'Marmota_flaviventris',
-                  'Urocitellus_beldingi',
-                  'Callospermophilus_lateralis',
-                  'Sorex_monticolus',
-                  'Ochotona_princeps',
-                  'Tamias_alpinus') %>% 
-  str_sort() %>% 
-  str_remove('[_]') #Remove '_' to match object 'pfa_data'
-```
-
 # Site Data
 
 ```{r data, include=FALSE}
@@ -165,7 +131,8 @@ site_data <- site_data_ %>%
   relocate(Elev_prism,
            .after = Elev) %>% 
   select(-Species,
-         -`Elevation Estimated PSI`)
+         -`Elevation Estimated PSI`) %>% 
+  filter(Era == "H" | Era == 'HM')
 
 #Add elevation data from PRISM rasters.
   prism_elev_data <- terra::rast("/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/Geospatial Data/PRISM_us_dem_800m.tif")
@@ -178,9 +145,7 @@ site_data <- site_data_ %>%
   site_data <- site_data %>% 
     mutate(Elev_prism = raster::extract(prism_elev_data,
                        y = site_data_sf)[,2])
-```
 
-```{r community_climate_indeces, include=FALSE}
 #For loop for every site CCI
 for (i in 1:nrow(site_data)) {
   print(i)
@@ -206,49 +171,126 @@ for (i in 1:nrow(site_data)) {
 community_data <- site_data %>% 
   select(any_of(sp_climate_data$species_name)) %>% 
   t() 
+
 colnames(community_data) <- site_data$site_name
-  
   
   #Community temperature index
   community_data_MAT <- community_data * sp_climate_data$MAT
   community_data_MAT[community_data_MAT == 0] <- NA
+  
   community_data_MAT <- community_data_MAT %>% 
     t() %>% 
     as.data.frame() %>% 
     rowwise() %>% 
     mutate(CTI = median(c_across(everything()),
                            na.rm = T))
+  
   community_data_MAT <- as.data.frame(community_data_MAT) %>% 
-    mutate(site_name = site_data$site_name) %>% 
+    mutate(site_name = site_data$site_name,
+           Era = site_data$Era) %>% 
     select(site_name,
+           Era,
            CTI)
   
   #Community precipitation index
   community_data_MAP <- community_data * sp_climate_data$MAP
   community_data_MAP[community_data_MAP == 0] <- NA
+  
   community_data_MAP <- community_data_MAP %>% 
     t() %>% 
     as.data.frame() %>% 
     rowwise() %>% 
     mutate(CPI = median(c_across(everything()),
                            na.rm = T))
+  
   community_data_MAP <- as.data.frame(community_data_MAP) %>% 
-    mutate(site_name = site_data$site_name) %>% 
+    mutate(site_name = site_data$site_name,
+           Era = site_data$Era) %>% 
     select(site_name,
+           Era,
            CPI)
 
   #Add community climate indices to site_data
   site_data <- left_join(x = site_data,
                  y = community_data_MAT,
-                 by = "site_name") %>% 
+                 by = c('site_name',
+                        'Era')) %>% 
     left_join(y = community_data_MAP,
-              by = "site_name") %>% 
+              by = c('site_name',
+                        'Era')) %>% 
     relocate(c(CTI,CPI),
              .after = site_name)
   
+  site_data <- site_data %>% 
+    group_by(site_name) %>% 
+    mutate(cti_change = diff(CTI),
+           cpi_change = diff(CPI)) %>% 
+    ungroup() %>% 
+    relocate(cti_change,
+             .after = CTI) %>% 
+    relocate(cpi_change,
+             .after = CPI)
+  
+# #Save site_data in csv compatible with climate NA to extract climate data.
+#   site_data_climateNA <- site_data %>% 
+#     select(site_name,
+#            Era,
+#            latitude,
+#            longitude,
+#            Elev_prism) %>% 
+#     transmute(ID1 = site_name,
+#               ID2= Era,
+#               lat = latitude,
+#               long = longitude,
+#               el = Elev_prism)
+#   
+#   write.csv(site_data_climateNA,
+#             file = "/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinnell-Mammal-Community-Shifts/site_data_climateNA_extraction.csv",
+#             fileEncoding = 'UTF-8',
+#             row.names = FALSE)
+  
+site_data_climate <- read_csv("/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinnell-Mammal-Community-Shifts/site_data_climateNA_extraction_1901-2021Y.csv") 
+
+names(site_data_climate)[2] = "site_name"
+names(site_data_climate)[3] = "Era"
+
+site_data_climate_H <- site_data_climate %>% 
+  filter(Era == 'H',
+         Year <= 1931) %>% 
+  group_by(site_name) %>% 
+  summarise(temp = median(MAT),
+            precip = median(MAP)) %>% 
+  mutate(Era = "H")
+
+site_data_climate_M <- site_data_climate %>% 
+  filter(Era == 'HM',
+         Year >= 1991) %>% 
+  group_by(site_name) %>% 
+  summarise(temp = median(MAT),
+            precip = median(MAP)) %>% 
+  mutate(Era = "HM")
+
+site_data <- site_data %>% 
+  left_join(site_data_climate_H,
+            by = c("site_name",
+                   "Era")) %>% 
+  rows_update(site_data_climate_M,
+              by = c("site_name",
+                   "Era")) %>% 
+  group_by(site_name) %>%
+  mutate(temp_change = diff(temp),
+         precip_change = diff(precip)) %>% 
+  relocate(c(temp,
+             temp_change),
+           .before = CTI) %>% 
+  relocate(c(precip,
+             precip_change),
+           .before = CPI)
+
 #Save site_data
   write_csv(site_data,
           file = "~/Desktop/Grinnell-Mammal-Community-Shifts/Data/site_data_clean.csv")
+  
 ```
 
 
