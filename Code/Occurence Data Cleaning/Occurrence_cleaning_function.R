@@ -2,7 +2,6 @@
 require(sf)
 require(tidyverse)
 
-
 ###
 #load spatial data
 ###
@@ -59,31 +58,6 @@ occurrence_metadata <- tibble(species = species_list,
                               within_range = NA,
                               within_buffer = NA,
                               outside_buffer = NA)
-
-#Define export folders.
-data_export_folder <- '/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_data/occurrence_data_clean/'
-plot_export_folder <- '/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_data/occurrence_data_clean_maps/'
-for (i in 1:length(species_list)) {
-  species_name <- species_list[i]
-  occurrence_data <- read.delim(paste0('/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_data/',species_name,'/occurrence.txt'))
-  rangeMap <- st_transform(sf::st_read(paste0('/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/IUCN Species Ranges/Species Ranges_Exports_QGIS/',
-                                              species_name,
-                                              '/',
-                                              species_name,
-                                              '.shp')),
-                           enmSdm::getCRS('albersNA'))
-  
-  speciesSf_filtered <- occurrence_cleaning()
-  
-  occurrence_plot()
-}
-
- #Save metadata file
-occurrence_metadata <- occurrence_metadata %>% 
-  mutate(prop_inside = round(within_buffer/filtered_records,
-                             digits = 2))
-save(occurrence_metadata,
-     file = '~/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_metadata.Rdata')
 
 ###########
 #Plotting function.
@@ -171,7 +145,7 @@ occurrence_cleaning <- function(){
            within_exclusion = lengths(st_within(x = species_alb, 
                                                 y = exclusion_buffer)),
            species_name = species_name) %>% 
-    # filter(year >= 1970) %>% #I have a feeling this should not be here as my climate extractio takes into consideration when the occurrence was collected.
+    # filter(year >= 1970) %>% #I have a feeling this should not be here as my climate extraction takes into consideration when the occurrence was collected.
     filter(coordinateUncertaintyInMeters <= 1000 | is.na(coordinateUncertaintyInMeters)) %>% 
     filter(!(coordinateUncertaintyInMeters == "NA" &
                within_range == 0),
@@ -205,15 +179,32 @@ occurrence_cleaning <- function(){
   return(speciesSf_filtered)
 }
 
+#Define export folders.
+data_export_folder <- '/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_data/occurrence_data_clean/'
+plot_export_folder <- '/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_data/occurrence_data_clean_maps/'
+
+for (i in 1:length(species_list)) {
+  species_name <- species_list[i]
+  occurrence_data <- read.delim(paste0('/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_data/',species_name,'/occurrence.txt'))
+  rangeMap <- st_transform(sf::st_read(paste0('/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/IUCN Species Ranges/Species Ranges_Exports_QGIS/',
+                                              species_name,
+                                              '/',
+                                              species_name,
+                                              '.shp')),
+                           enmSdm::getCRS('albersNA'))
+  
+  speciesSf_filtered <- occurrence_cleaning()
+  
+  occurrence_plot()
+}
+
+#Save metadata file
+occurrence_metadata <- occurrence_metadata %>% 
+  mutate(prop_inside = round(within_buffer/filtered_records,
+                             digits = 2))
+save(occurrence_metadata,
+     file = '~/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_metadata.Rdata')
+
 #Save metadata
 save(occurrence_metadata,
      file = '/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_metadata.Rdata')
-
-occ_issue <- speciesSf_filtered %>% 
-  filter(within_buffer == 0)
-#number of occurrences with issues.
-nrow(occ_issue)
-#Unique issues.
-unique(occ_issue$issue)
-#View data
-view(occ_issue)
