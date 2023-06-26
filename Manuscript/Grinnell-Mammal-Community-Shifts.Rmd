@@ -1,0 +1,68 @@
+---
+title: "Grinnell-Mammal-Community-Shifts"
+author: "Ethan Abercrombie"
+date: '`r Sys.Date()`'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Methods
+
+**Data**
+
+Occurrence data used in determining the preferred temperate and precipitation of each species was downloaded from the Global Biodiversity Information Facility on (date and citation). Range maps for each species are from the International Union for Conservation of Nature (date and citation). Contemporary and historical elevational range data for each species are from @Rowe et al. 2015\...
+
+***Community climate indices***
+
+We measured the community temperature index and community precipitation index for each site in each era as the median of species' temperature and precipitation preferences present, respectively.
+
+To determine the preferred temperature and precipitation of each species in our study, we downloaded occurrence data from the Global Biodiversity Information Facility using the *R* packages *occCite* []. [To overcome limitations or uncertainty]. For each species, we first filtered occurrence records to include only those recorded as physical objects, specimens, and/or found in a collection. Records without latitude or longitude data, flagged with geospatial warnings, or with coordinate uncertainty greater than 1000m were removed. Second, we created an 80 km buffer [sf package] around the species' IUCN range map []. Range maps were found accurate by 80km... [appropriate citation]. Records more than three times the buffer (240km) were excluded. For records where coordinate uncertainty was not available, we included only those within the IUCN range. We extracted annual climate data for the location of each records from 1901-200x using ClimateNA software [citation]. We measured the mean annual temperature and mean annual precipitation of each species as the mean of the these measurements 15 years before and 15 years after the occurrence was created (31 years total). To the best of our knowledge, this is the first study that considers when an occurrence was recorded when assigning annual climate values\...
+
+# Figures
+
+![](figure_exports/fig_changecti_elev.png) ![](figure_exports/fig_changecpi_elev.png)
+
+Figure 1: Changes in the community temperature index and community precipitation index in the three study regions across elevation.
+
+Prediction: Over the past century, every site in our study has become hotter and drier (supplementary figure 2). We predict that small-mammal communities have responded to these changes, and are now comprised of species with hotter thermal preferences, and drier precipitation preferences, than in the past. These changes will increase the CTI, and decrease the CPI.
+
+![](figure_exports/fig_changecti_changesitetemp.png) ![](figure_exports/fig_changecpi_changesiteprecip.png)
+
+Figure 2: Relationship between changes in community climate indices (CTI/CPI) and changes in site climate(temperature and precipitation, respectively). The dashed 1:1 line represents climate tracking, where community climate indices and site climate have changed in the same way.
+
+Prediction 1a: Sites where climate has changed the most will show correspondingly greater changes in community climate indices (CTI/CPI).
+
+Prediction 1b: Communities are tracking climate change. Points will fall around the 1:1 line.
+
+![](figure_exports/fig_changecti_tempmarginality.png) ![](figure_exports/fig_changecpi_precipmarginality.png)
+
+Figure 3: Relationship between changes in community climate indices (CTI/CPI) and site marginality. Site marginality is calculated using historical ranges, and represents how close a site is to a species' climate optima (temperature and precipitaiton).
+
+Prediction: Increases in community climate indices is positively correlated with climate marginality (CTI\~temp-marginality, CPI\~precip-marginality). Sites with many species at the edge of their climate niche will have higher turnover than sites with species at the center of their climate niche. NOTE: For now, temp- and precip-marginality is non-directional: Sites at the cold-extreme and hot-extreme of a species' range will have high marginality values. It might be best to compare absolute change in community climate indeces and climate-niche marginality (see fig. S1).
+
+$$
+marginality (C) = \frac{Abs(site(C)-\frac{species-max(C) + species-min(C)}{2})}{\frac{species-max(C) - species-min(C)}{2}}
+$$
+
+# Supplementary Figures
+
+![](figure_exports/fig_betadiv_tempmarginality.png) ![](figure_exports/fig_betadiv_precipmarginality.png)
+
+Figure S1: Relationships between climatic niche marginality and overall temporal beta-diversity. Climatic niche marginality (temp/precip) calculated for historical communities.
+
+Prediction: Temporal beta-diversity is positively associated with climatic niche marginality. This prediction is related to that presented below figure 3, but considers that species exhibit idiosyncratic responses to climate change.
+
+![](figure_exports/fig_changetemp_Elev) ![](figure_exports/fig_changeprecip_Elev)
+
+Figure S2: Changes in site temperature and precipitation across elevation.
+
+![](figure_exports/fig_cti_sitetemp) ![](figure_exports/fig_cpi_siteprecip)
+
+Figure S3: Relationship between community climate indices and associated climate values (cti\~temp, cpi\~precip), in historical and modern Eras.
+
+Prediction: If modern communities are in *greater* climate disequilibrium now than in the past, we expect the strength (R2) to be greater for the historical communities than for the modern communities. Nonlinear relationships make me confused about how to test this prediction.
+
+![](figure_exports/fig_cti_Elev) ![](figure_exports/fig_cpi_Elev)
+
+Figure S4: Relationship between community climate indices and Elevation.
