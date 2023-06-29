@@ -114,7 +114,7 @@ occurrence_cleaning <- function(){
              type=='Occurrence' |
              type=="Collection" |
              type=='Physical Object' |
-             type == 'Objeto fÃsico') %>%
+             type == 'Objeto fÃsico') %>% #Select physical specimens and occurrences.
     mutate_if(is.character, list(~na_if(.,""))) %>% #This removes empty coordinates stored as a blankspace "".
     filter(!is.na(decimalLatitude) & 
              !is.na(decimalLongitude))
@@ -145,7 +145,6 @@ occurrence_cleaning <- function(){
            within_exclusion = lengths(st_within(x = species_alb, 
                                                 y = exclusion_buffer)),
            species_name = species_name) %>% 
-    # filter(year >= 1970) %>% #I have a feeling this should not be here as my climate extraction takes into consideration when the occurrence was collected.
     filter(coordinateUncertaintyInMeters <= 1000 | is.na(coordinateUncertaintyInMeters)) %>% 
     filter(!(coordinateUncertaintyInMeters == "NA" &
                within_range == 0),
