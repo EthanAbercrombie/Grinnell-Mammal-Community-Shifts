@@ -29,30 +29,30 @@ collateDfs <- function(folder, ...) {
   } else {
     
     # read first file
-    df <- read_csv(files[1]) %>% 
-      select(-c(eventDate,
-                eventTime,
-                georeferencedDate,
-                verbatimElevation,
-                fieldNumber,
-                datasetID,
-                collectionID,
-                locationID))
+    df <- read_csv(files[1])  
+      # select(-c(eventDate,
+      #           eventTime,
+      #           georeferencedDate,
+      #           verbatimElevation,
+      #           fieldNumber,
+      #           datasetID,
+      #           collectionID,
+      #           locationID))
     
     # if >1 files
     if (length(files > 1)) {
       
       for (countFile in 2:length(files)) {
         
-        thisDf <- read_csv(files[countFile]) %>% 
-          select(-c(eventDate,
-                    eventTime,
-                    georeferencedDate,
-                    verbatimElevation,
-                    fieldNumber,
-                    datasetID,
-                    collectionID,
-                    locationID))
+        thisDf <- read_csv(files[countFile])  
+          # select(-c(eventDate,
+          #           eventTime,
+          #           georeferencedDate,
+          #           verbatimElevation,
+          #           fieldNumber,
+          #           datasetID,
+          #           collectionID,
+          #           locationID))
         
         df <- list(df, thisDf) %>% 
           bind_rows() %>% 
