@@ -117,10 +117,11 @@ write.csv(climate_na_data_input,
           fileEncoding = 'UTF-8',
           row.names = F)
  
-
-# #IMPORTANT
-# #You must open this file in excel, and save it as UTF-8. For some reason, I cannot get R to export the merged file with UTF-8 encoding.
-# ########
+#####
+#TO BE USED AFTER CLIMATE DATA IS EXTRACTED
+#IMPORTANT
+#You must open this file in excel, and save it as UTF-8. For some reason, I cannot get R to export the merged file with UTF-8 encoding.
+#####
 
 #Load output from climate NA
 
