@@ -4,8 +4,6 @@
 #packages
 require(tidyverse)
 
-#Author: Ethan Abercrombie
-
 #This script merges the clean occurrence data into one large csv that can be used in Analyses. 
 #########
 
@@ -182,23 +180,51 @@ write_csv(occurrence_data_merged,
           file = paste0('~/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_data/',file_name))
 
 #Calculate species' preferences.
-species_climate_preferences <- occurrence_data_merged %>% 
+# species_climate_preferences <- occurrence_data_merged %>% 
+#   select(species_name,
+#          med_ann_temp,
+#          med_ann_precip) %>% 
+#   group_by(species_name) %>% #For each species, I kept those records within the 5th and 95th quantiles to avoid climate extremes.
+#   filter(between(med_ann_temp,
+#                  quantile(med_ann_temp, 0.05),
+#                  quantile(med_ann_temp, 0.95)) &
+#          between(med_ann_precip,
+#                  quantile(med_ann_precip, 0.05),
+#                  quantile(med_ann_precip, 0.95))) %>% 
+#   summarise(MAT = median(med_ann_temp),
+#             MAP = median(med_ann_precip),
+#             temp_min = min(med_ann_temp),
+#             temp_max = max(med_ann_temp),
+#             precip_min = min(med_ann_precip),
+#             precip_max = max(med_ann_precip))
+
+species_temperature_preferences <- occurrence_data_merged %>%
   select(species_name,
          med_ann_temp,
          med_ann_precip) %>% 
   group_by(species_name) %>% #For each species, I kept those records within the 5th and 95th quantiles to avoid climate extremes.
   filter(between(med_ann_temp,
                  quantile(med_ann_temp, 0.05),
-                 quantile(med_ann_temp, 0.95)) &
-         between(med_ann_precip,
+                 quantile(med_ann_temp, 0.95))) %>% 
+  summarise(MAT = median(med_ann_temp),
+            temp_min = min(med_ann_temp),
+            temp_max = max(med_ann_temp))
+
+species_precipitation_preferences <- occurrence_data_merged %>%
+  select(species_name,
+         med_ann_precip,
+         med_ann_precip) %>% 
+  group_by(species_name) %>% #For each species, I kept those records within the 5th and 95th quantiles to avoid climate extremes.
+  filter(between(med_ann_precip,
                  quantile(med_ann_precip, 0.05),
                  quantile(med_ann_precip, 0.95))) %>% 
-  summarise(MAT = median(med_ann_temp),
-            MAP = median(med_ann_precip),
-            temp_min = min(med_ann_temp),
-            temp_max = max(med_ann_temp),
+  summarise(MAP = median(med_ann_precip),
             precip_min = min(med_ann_precip),
             precip_max = max(med_ann_precip))
+
+species_climate_preferences <- full_join(species_precipitation_preferences,
+                                         species_temperature_preferences,
+                                         by = 'species_name')
 
 #Save preferences in seperate file.
 write_csv(species_climate_preferences,
