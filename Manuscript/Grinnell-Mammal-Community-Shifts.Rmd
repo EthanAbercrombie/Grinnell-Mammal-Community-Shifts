@@ -25,7 +25,7 @@ Paragraph 1: Broad importance
 
 -   These efforts are critical for conservation (need specific conservation topics).
 
-Anthropogenic climate change has widespread effects on biodiversity, often resulting in the reshuffling of ecological communities as species ranges shift in response to climate effects () and changing biotic interactions (). Understanding community responses to climate change is imperative in efforts to safeguard biodiversity in the anthroprocene (). This is especially important in montane ecosystems, where species ranges are small, biodiversity is high, and compressed environmental gradients across elevation lead to rapid range shifts ().
+Climate change has widespread effects on the distribution (), abundance (), and behavior () of species around the world, leading to the reshuffling of ecological communities (). The effects of climate change are particularly pronounced in montane ecosystems where compressed environmental gradients lead to rapid turnover in biodiversity across elevation. Mountain ranges around the world harbor []%75 percent of global terrestrial species richnesss -- understaning how ecological communities in montane ecosystems respond to climate change is imperative in safeguarding biodiversity.
 
 Paragraph 2: Knowledge gap
 
@@ -37,37 +37,52 @@ Paragraph 2: Knowledge gap
 
     -   This has mixed support as individual species migrate upwards, stay the same, or even shift downward.
 
-    -   Could be a result of different mechanims (different factors of climate, biotic interactions) -- highlight these as a cause of why we see different responses (leaves tension).
+        -   Highlight mixed results more prominently, where some studies are inline with prediction 1 and others are not.
 
--   Knowledge gap: It remains unclear to what extand individual responses to climate change scales up to directional changes in community-level outcomes.
+    -   Could be a result of different mechanisms (different factors of climate, biotic interactions) -- highlight these as a cause of why we see different responses (leaves tension).
 
-In recent years, there has been increased focus on identifying how species have shifted their elevation distributions. These studies support a general pattern of upward species' shifts in response to recent warming (), but note that [contradictions] are common, with species' not shifting their ranges at all or shifting downslope (). These [contradictions] has eliminated a general understanding of species responses to ongoing climate change. However, there is widespread support that ecological communities show a general pattern of warming and drying despite idiosyncratic range shifts.
+        -   Mechanisms: Other climatic factors (water balance), biotic interactions, dispersal limitation.
 
-\*Highlight the mixed results more prominently, where some studies are inlne with elev. predicitons, and others don't.
+-   Knowledge gap: It remains unclear to what extant individual responses to climate change scales up to directional changes in community-level outcomes.
 
-Kicks off with climate tracking as key in the field. This hypothesis makes two key predictions 1) individual species should exhibit range shifts with concammitment climate preferences, and 2) thermophilizaiton and mesophilization on a community level. Some evidence that species shifts are tracking climate, ut responses are idiosyncratic,. conclude with idea that community-level patterns might provide more robust insight into climate tracking.
+One popular hypothesis is that species will move to higher elevations to track preferred thermal regimes (). This hypothesis makes two predictions: 1)
+
+One popular hypothesis is that species will track preferred climatic conditions through migration (climate tracking). In montane ecosystems, it is generally thought that species will move upslope to track preferred temperature regimes. This hypothesis makes two predictions: 1) individual species exhibit range shifts with concomitant climate preferences, and 2) ecological communities shift in favor of more warm-adapted and dry-adapted species, a process known as thermophilization and mesophilization respectively (). There is mixed support for upslope climate-tracking in montane ecosystems. While many species have migrated upslope in recent decades (), there is a considerable number who have not shifted their elevational distributions or who have migrated downslope. Three mechanisms are believed to lead to these idiosyncratic responses in montane ecosystems. First, dispersal limitation may limit the migration of species upslope, leading to elevational distributions that are discouple with preferred climate (). Second, species' ranges may be governed by climatic factors beyond temperature, like precipitation and water balance, that can facilitate downslope migration (). Third, changes in biotic interaction can facilitate downlope, upslope, or no change in species ranges. Idiosyncratic responses to recent environmental change has muddled a general theory of climate-tracking, and it remains unclear to what extant they scale up to directional changes in community-level outcomes. ().
 
 Paragraph 3: Novel Solutions
 
-**Could highlight 3-4 ways to bridge this gap. large scales of time, space,**
+-   Despite idiosyncratic range shifts, ecological communities can still display the signatures of climate change drives community composition at a site.
 
-**Pivot away from range shifts and focus on community-level framework. Despite idiosyncratic range shifts, the signature at the community level will stay true (focus on mortality, recruitment, fecundity -- demographic processes).**
+    -   Alternatively, if species composition is not governed by climate, or if the majority of species respond to different environmental or biotic factors, there might be no signature of climate change at the community-level.
 
-**Idiosyncricity in range shifts might cause idiosyncricity at the community level. Our results show that**
+```{=html}
+<!-- -->
+```
+-   However, there are three key limitations that have generally limited our understanding of how ecological range shifts scale up to community-level outcomes.
+
+    -   First, most studies focus solely on climate warming.
+
+    -   Second, Long-term assessments on of community changes are rare.
+
+    -   Third, many studies focus on a single elevational transect.
 
 \*Highlight a few reasons of why we would see variable effects.
 
-Topic sentence (Jonathan): Variability in climate tracking across study/organisms/etx. might reflect 3 keys factors 1): focused on climate warming, 2) long-term assesments to community change are rare (chimborazo, alps) and 3) comparisons across different regions (geographic differences in how communities respond) while many studies focus on a single elevational transect 4) mammals are rare?
-
-We utilize an unprecedented data set spanning nearly 100 years of climate change to highlight how small-mammal communities across montane California have responded to recent anthropogenic climate change [multiple citations]. The small-mammal species in our study show idiosyncratic range shifts across elevation and between regions, making these data a great candidate to uncover general trends in how communities are responding to rising temperatures.
-
-**one idea:**lots of variability in prediction 1(),
+Ecological communities can display the signatures of climate change despite idiosyncratic range shifts if overall effects of climate on the local community are strong. Alternatively, if the majority of species respond to different environmental and biotic factors, there might be no signature of climate change at the community-level. Three key limitations have generally limited our understand of how species' range shifts scale up to community-level outcomes. First, there is overemphasis on the role of temperature in driving species distributions, when other climatic factors may be important. Second, Long-term community assessments are rare. Lastly, the majority of research has focused on a single elevational transect, although species have been shown to respond differently throughout their range.
 
 Paragraph 4: Study Questions/hypotheses
 
+-   We address these limitations using a dataset, originally collected by Joseph Grinnell, that spans nearly \~100 years of contemporary climate change.
+
+    -   Species have shown to have idiosyncratic responses across elevation and between regions.
+
+-   We highlight how communities are responding to precipitation, as well as temperature.
+
+-   The scale of our study spans three regions in montane California.
+
 second sentence as topic sentence, first is a bit vague. can mirror paragraph 3 structure here e.g. could observe more variability in outcomes. Int this study we did 1) longterm 2) precipitatin 3) across regions. general readership mention mountains in a general way. highlight why these small mammal communities are a good case study 1) display idiosyncratic range shifts 2) lacking research 3) long-term. Mention Joseph Grinnell.
 
-In this paper, we characterized small-mammal communities by the thermal and precipitation preferences of species present. We test the hypothesis small-mammal communities across the Sierra Nevada have responded to climate change over the past \~100 years. Specifically, we predict that small-mammal communities are comprised of more warm-adapted and dry-adapted species despite idiosyncratic elevational range shifts. If communities are comprised of more warm-adapted species, we expect the average thermal preferences at a site to increase. Likewise, if communities are comprised of more dry-adapted species, we expect the average precipitation preferences at a site to decrease.
+In this study, we used a nearly century-old dataset on the elevational distribution of small-mammals, originally collected by Joseph Grinnell and his students, to understand how idiosyncratic shifts in species ranges affect community-level outcomes of climate-tracking in montane California. We focus on two aspects of climate, temperature and precipitation, to understand how ecological communities have changed over the past one hundred years. We take into account that species respond to climate differently across their range by including three regions in our analysis. We test the prediction that small-mammal communities are comprised of more warm-adapted and dry-adapted species despite idiosyncratic elevational range shifts.
 
 # Methods
 
