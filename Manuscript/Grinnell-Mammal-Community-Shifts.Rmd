@@ -1,112 +1,102 @@
 ---
-title: "Grinnell-Mammal-Community-Shifts"
+title: "Effects of a Century of Climate Change on Small-mammal Communities in Montane California"
 author: 
   - Ethan Abercrombie
   - Jonathan A. Myers
   - Adam B. Smith
 date: '`r Sys.Date()`'
 output:
-  pdf_document: default
-  html_document: default
   word_document: default
+  html_document: default
+  pdf_document: default
+bibliography: Grinnell_bibliography.bib
 ---
 
 # Introduction
 
-Paragraph 1: Broad importance
+Climate change has widespread effects on the distribution [@Chen2011], abundance [@Bowler2017], and behavior [@Loe2016] of species around the world, leading to the reshuffling of ecological communities [@Williams2007]. The effects of climate change are particularly pronounced in montane ecosystems where compressed environmental gradients lead to rapid turnover in biodiversity across elevation [@Sanders2012; @Graham2014]. Montane ecosystems comprise % percent of terrestrial land area, yet harbor 87% of global terrestrial species richness [@Rahbek2019]. Given the disproportionate contribution of montane ecosystems to global biodiversity, understanding how they respond to climate change is imperative for safeguarding biodiversity and the ecosystem services it provides [@Sundqvist2013; @Pecl2017; @Duque2021].
 
--   Climate change is causing the reshuffling of ecological communities.
+One prominent mechanism to explain biodiversity responses to climate change is that species will track their preferred climate conditions by migrating to new areas with suitable climates []. This climate-tracking hypothesis makes two predictions: 1) individual species exhibit range shifts concomitant with their climate preferences, and 2) ecological communities exhibit increases in the relative abundances, and changes in composition, in favor of the species best-adapted to novel climate conditions at a site []. Many communities are shifting in favor of more warm-adapted and dry-adapted species, a process known as thermophilization and mesophilization respectively [@Devictor2012; @Duque2015]. In montane ecosystems, it is generally thought that species will move upslope to track preferred temperature regimes [@Thuiller2007; @Feeley2012; @Lenoir2015]. However, there is mixed support for upslope climate-tracking in montane ecosystems. While many species have moved to higher elevation in recent decades [@Chen2011; @Mamantov2021], there is a considerable number who have not shifted their elevational distributions or who have migrated downslope [@Rubenstein2023]. Three mechanisms are believed to lead to these idiosyncratic range shifts in montane ecosystems. First, dispersal limitation may limit the migration of species upslope, leading to elevational distributions that are decoupled from preferred climate [@Wen2022]. Second, species' ranges may be governed by climatic factors beyond temperature, like precipitation and water balance, that can facilitate downslope migration [@Crimmins2011; @Tingley2009]. Third, elevational changes in biotic interaction can facilitate downlope, upslope, or no change in species ranges [@HilleRisLambers2013; @Alexander2015]. Given the variable responses of individual species to climate change, it remains unclear whether range shifts scale up to result in directional changes in community-level outcomes [].
 
--   This is especially important in montane ecosystems where species have smaller ranges and environmental gradients are compressed.
+Ecological communities can display the signatures of climate change despite idiosyncratic range shifts if overall effects of climate on the local community are strong [@Devictor2012; @Fadrique2018]. Alternatively, if the majority of species respond to different environmental and biotic factors, there might be no signature of climate change at the community-level. Three key limitations have generally limited our understand of how species' range shifts scale up to community-level outcomes. First, there is overemphasis on the role of temperature in driving species distributions, when other climatic factors may be important [@Tingley2009]. Second, Long-term community assessments are rare. Lastly, the majority of research has focused on a single elevational transect, although species have been shown to respond differently throughout their range.
 
--   Understanding community-wide responses can lend insight into the factors driving biodiversity. (assembly)
-
-    -   Can lend insight into how biodiversity will respond in the future.
-
--   These efforts are critical for conservation (need specific conservation topics).
-
-Climate change has widespread effects on the distribution (), abundance (), and behavior () of species around the world, leading to the reshuffling of ecological communities (). The effects of climate change are particularly pronounced in montane ecosystems where compressed environmental gradients lead to rapid turnover in biodiversity across elevation. Mountain ranges around the world harbor []%75 percent of global terrestrial species richnesss -- understaning how ecological communities in montane ecosystems respond to climate change is imperative in safeguarding biodiversity.
-
-Paragraph 2: Knowledge gap
-
--   One popular hypothesis that has support is that species will migrate upwards to track environmental preferences.
-
-    -   This hypothesis makes two predictions 1) individual species should exhibit range shifts with concomitant climate preferences, and 2) thermophilizaiton and mesophilization on a community level.
-
--   There is mixed support for prediction 1:
-
-    -   This has mixed support as individual species migrate upwards, stay the same, or even shift downward.
-
-        -   Highlight mixed results more prominently, where some studies are inline with prediction 1 and others are not.
-
-    -   Could be a result of different mechanisms (different factors of climate, biotic interactions) -- highlight these as a cause of why we see different responses (leaves tension).
-
-        -   Mechanisms: Other climatic factors (water balance), biotic interactions, dispersal limitation.
-
--   Knowledge gap: It remains unclear to what extant individual responses to climate change scales up to directional changes in community-level outcomes.
-
-One popular hypothesis is that species will move to higher elevations to track preferred thermal regimes (). This hypothesis makes two predictions: 1)
-
-One popular hypothesis is that species will track preferred climatic conditions through migration (climate tracking). In montane ecosystems, it is generally thought that species will move upslope to track preferred temperature regimes. This hypothesis makes two predictions: 1) individual species exhibit range shifts with concomitant climate preferences, and 2) ecological communities shift in favor of more warm-adapted and dry-adapted species, a process known as thermophilization and mesophilization respectively (). There is mixed support for upslope climate-tracking in montane ecosystems. While many species have migrated upslope in recent decades (), there is a considerable number who have not shifted their elevational distributions or who have migrated downslope. Three mechanisms are believed to lead to these idiosyncratic responses in montane ecosystems. First, dispersal limitation may limit the migration of species upslope, leading to elevational distributions that are discouple with preferred climate (). Second, species' ranges may be governed by climatic factors beyond temperature, like precipitation and water balance, that can facilitate downslope migration (). Third, changes in biotic interaction can facilitate downlope, upslope, or no change in species ranges. Idiosyncratic responses to recent environmental change has muddled a general theory of climate-tracking, and it remains unclear to what extant they scale up to directional changes in community-level outcomes. ().
-
-Paragraph 3: Novel Solutions
-
--   Despite idiosyncratic range shifts, ecological communities can still display the signatures of climate change drives community composition at a site.
-
-    -   Alternatively, if species composition is not governed by climate, or if the majority of species respond to different environmental or biotic factors, there might be no signature of climate change at the community-level.
-
-```{=html}
-<!-- -->
-```
--   However, there are three key limitations that have generally limited our understanding of how ecological range shifts scale up to community-level outcomes.
-
-    -   First, most studies focus solely on climate warming.
-
-    -   Second, Long-term assessments on of community changes are rare.
-
-    -   Third, many studies focus on a single elevational transect.
-
-\*Highlight a few reasons of why we would see variable effects.
-
-Ecological communities can display the signatures of climate change despite idiosyncratic range shifts if overall effects of climate on the local community are strong. Alternatively, if the majority of species respond to different environmental and biotic factors, there might be no signature of climate change at the community-level. Three key limitations have generally limited our understand of how species' range shifts scale up to community-level outcomes. First, there is overemphasis on the role of temperature in driving species distributions, when other climatic factors may be important. Second, Long-term community assessments are rare. Lastly, the majority of research has focused on a single elevational transect, although species have been shown to respond differently throughout their range.
-
-Paragraph 4: Study Questions/hypotheses
-
--   We address these limitations using a dataset, originally collected by Joseph Grinnell, that spans nearly \~100 years of contemporary climate change.
-
-    -   Species have shown to have idiosyncratic responses across elevation and between regions.
-
--   We highlight how communities are responding to precipitation, as well as temperature.
-
--   The scale of our study spans three regions in montane California.
-
-second sentence as topic sentence, first is a bit vague. can mirror paragraph 3 structure here e.g. could observe more variability in outcomes. Int this study we did 1) longterm 2) precipitatin 3) across regions. general readership mention mountains in a general way. highlight why these small mammal communities are a good case study 1) display idiosyncratic range shifts 2) lacking research 3) long-term. Mention Joseph Grinnell.
-
-In this study, we used a nearly century-old dataset on the elevational distribution of small-mammals, originally collected by Joseph Grinnell and his students, to understand how idiosyncratic shifts in species ranges affect community-level outcomes of climate-tracking in montane California. We focus on two aspects of climate, temperature and precipitation, to understand how ecological communities have changed over the past one hundred years. We take into account that species respond to climate differently across their range by including three regions in our analysis. We test the prediction that small-mammal communities are comprised of more warm-adapted and dry-adapted species despite idiosyncratic elevational range shifts.
+In this study, we address these limitations by using a data set on the elevational distribution of small-mammals spanning nearly a century [@Rowe2015], originally collected by Joseph Grinnell and his students, to understand how shifts in species ranges affect community-level outcomes of climate-tracking in montane California. We focus on two aspects of climate, temperature and precipitation, to understand how ecological communities have changed over the past one hundred years. We take into account that species respond to climate differently across their range by including three National Parks in our analysis: Lassen Volcanic, Yosemite, and Sequoia and Kings Canyon. We test the prediction that small-mammal communities are comprised of more warm-adapted and dry-adapted species after a century of climate warming and drying.
 
 # Methods
 
-Small-mammal communities used in this study were surveyed along elevational transects across three regions in montane California: near Lassen Volcanic National Park ("Northern"), Yosemite National Park ("Central"), and Sequoia and Kings Canyon National Parks ("Southern"). Elevational extant decreases with latitude, while topographical complexity increases. Over the past xx-xx years, temperatures have risen on average xx in Northern sites, xx in Central sites, and xx in Southern sites. We observed changes in mean annual temperature (MAT) in central and southern sites to increase with elevation, inline with global patterns of elevation-dependent warming [citation, PRISM]. With the exception of low-elevation northern sites, most sites showed decreases in mean annual precipitation (MAP) between historical and contemporary surveys. MAP has decreased by xx in northern sites, xx in central sites, and xx in southern sites. [Forest ecology of the sites].
+Small-mammal communities used in this study were surveyed along elevational transects across three regions in montane California: near Lassen Volcanic National Park ("Northern"), Yosemite National Park ("Central"), and Sequoia and Kings Canyon National Parks ("Southern"). Elevational extant decreases with latitude, while topographical complexity increases.
 
-**Species climate preferences**
-
-We estimated the temperature and precipitation preferences for each species using occurrence data downloaded from the Global Biodiversity Information Facility (DOI: <https://doi.org/10.15468/dl.7x7sex>). Thermal and precipitation preferences for each species were estimated using the location of occurrence records from GBIF (downloaded on []; link to doi). We first filtered all occurrences to those recorded as "occurrence", or those representing collected specimens. All records without latitude and longitude were removed. To remove spurious records, we used species' range maps from the IUCN (DOI: <https://doi.org/10.15468/dl.7x7sex>; citation). All data more than three times the buffer (240km) were excluded. This step is conservative considering species' range maps are found to be accurate to around 80 km [citation]. If coordinate uncertainty was not reported, occurrences were discarded unless found within the IUCN rangemap. All occurrences with coordinate uncertainty greater than 1000m were excluded. Lastly, we excluded any occurrences with any remaining geospatial issues. Mean annual temperature (MAT) and mean annual precipitation (MAP) from 1901 to 2021 were extracted for each occurrence using ClimateNA software (ClimateNA citation). The recorded temperature and precipitation for each occurrence was measured as the 31-year average (+-15 years) around the date of collection. Species' temperature and precipitation preferences were measured as the median temperature and precipitation of each species' records.
+We estimated the thermal and precipitation preferences for each of the 34 species included in our analysis using occurrence data downloaded from the Global Biodiversity Information Facility (DOI: <https://doi.org/10.15468/dl.7x7sex>). Thermal and precipitation preferences were estimated from climate data at the location of each occurrence record. We first filtered all occurrences to those recorded as "occurrence", or those representing collected specimens. All records without latitude and longitude were removed. To remove spurious records, we used species' range maps from the IUCN [IUCN citation]. All data more than three times a buffer of 80 km (240km) were excluded. This step is conservative considering species' range maps are found to be accurate to around 80 km [@Hurlbert2007; @Seliger2021]. If coordinate uncertainty was not reported, occurrences were discarded unless found within the IUCN rangemap. All occurrences with coordinate uncertainty greater than 1000m were excluded. Lastly, we excluded any occurrences with any remaining geospatial issues. Mean annual temperature (MAT) and mean annual precipitation (MAP) from 1901 to 2021 were extracted for each occurrence using ClimateNA software (ClimateNA citation). The recorded temperature and precipitation for each occurrence was measured as the 31-year average (+-15 years) around the date of collection. For records without 15 years of available climate data before and after the data of collection, we included additional years above or below the date of collection to ensure a span of 31 years. Species' thermal and precipitation preferences were measured as the median temperature and precipitation of each species' records. To the best of our knowledge, this is the first study to consider the year of collection when calculating community-wide indices.
 
 ***Small Mammal Range Data***
 
-Species' elevational range data for the 34 species in this study come from Rowe *et al.* 2015, and were generated as part of the Grinnell Resurvey Project (<https://mvz.berkeley.edu/Grinnell/index.html>) at UC Berkeley's Museum of Vertebrate Zoology (<https://mvz.berkeley.edu>). A prolific [note taker], Joseph Grinnell surveyed California's small mammal and bird diversity, including sites across three elevational transects in California's Sierra Nevada mountains. Small mammal diversity was recorded from 1911 to 1934, and include 34 sites from Lassen (northern) National Park in [the southern cascade range], 47 sites from Yosemite National Park (central), and 53 sites from Sequoia and Kings Canyon National Parks (southern). These transects were surveyed again between 2003 and 2010, and include 38 sites in Lassen, 81 sites in Yosemite, and 47 sites in Sequoia and Kings Canyon. Rowe et al. 2015 estimated the elevational range shifts (herein range shifts) of 34 nonvolant small mammals across these three regions: Lassen, Yosemite National Park, and Sequoia and Kings Canyon national parks. Sites span [] degrees of latitude and vary in their climate and [physiogomy], with temperatures increasing and precipitation decreasing towards the south (check this). Range shifts for 28 species not easily observable were estimated using an unpaired-site and single-season occupancy modelling framework (Mackenzie & Nichols 2004 check this, this is in older paper), that estimates the probability of detection and probability of occupancy for each species [at each site]. A species was considered absent at a site if the probability of false absence was less than 5% (pfa \< 0.05). See Rowe et al. 2015 [] for additional details on estimating species' range shifts.
-
-Add year data.
+Species' elevational range data for the 34 species in this study come from @Rowe2015, and were generated as part of the Grinnell Resurvey Project (<https://mvz.berkeley.edu/Grinnell/index.html>) at UC Berkeley's Museum of Vertebrate Zoology (<https://mvz.berkeley.edu>). A prolific [note taker], Joseph Grinnell surveyed California's small mammal and bird diversity, including sites across three elevational transects in California's mountains. Small mammal diversity was recorded from 1911 to 1934, and include 34 sites from Lassen National Park in the southern cascade range (northern), 47 sites from Yosemite National Park (central), and 53 sites from Sequoia and Kings Canyon National Parks (southern). These transects were surveyed again between 2003 and 2010, and include 38 sites in Lassen, 81 sites in Yosemite, and 47 sites in Sequoia and Kings Canyon. Sites span [] degrees of latitude and vary in their climate and [physiogomy], with temperatures increasing and precipitation decreasing towards the south (check this). @Rowe2015 estimated the elevational range shifts (herein range shifts) of nonvolant small mammals across these three regions. Range shifts for 28 species not easily observable were estimated using an unpaired-site and single-season occupancy modelling framework (Mackenzie & Nichols 2004 check this, this is in older paper), that estimates the probability of detection and probability of occupancy for each species [at each site]. A species was considered absent at a site if the probability of false absence was less than 5% (pfa \< 0.05). The resulting data included the historical and modern altitudinal ranges of nonvolant mammals in northern, central, and southern regions. See @Rowe2015 for additional details on estimating species' range shifts.
 
 ***Community climate indices***
 
-For each historical site, we created a species by site matrix for historical and modern eras. A species was deemed present if the site's elevation was included in the species' elevational range for each era respectively (see Rowe et al. for details on measure species' elevational ranges). We measured the historical and contemporary community temperature index (CTI) and community precipitation index (CPI) at each site as the median of species' thermal and precipitation preferences, respectively, for all species present. Thermophilization and mesophilization rates were calculated for each region separately by diving changes in the CTI/CPI by the number of years spanning historical and modern censuses.
+For each historical site, we created a species by site matrix for historical and modern eras. A species was deemed present if the site's elevation was included in the species' elevational range for each respective era. We measured the historical and contemporary community temperature index (CTI) and community precipitation index (CPI) at each site as the median of species' thermal and precipitation preferences, respectively, for all species present. Thermophilization and mesophilization rates were calculated for each region separately by diving changes in the CTI/CPI by the number of years spanning historical and modern censuses.
 
 **Statistical Analyses.**
 
-Second, we created an 80 km buffer [sf package] around the species' IUCN range map []. Range maps were found accurate by 80km... [appropriate citation]. Records more than three times the buffer (240km) were excluded. For records where coordinate uncertainty was not available, we included only those within the IUCN range. We extracted annual climate data for the location of each records from 1901-200x using ClimateNA software [citation]. We measured the preferred temperature and preferred precipitation of each species as the mean of the these measurements 15 years before and 15 years after the occurrence was created (31 years total). To the best of our knowledge, this is the first study that considers when an occurrence was recorded when assigning annual climate values\...
+All analyses were performed in R []. We used Tidyverse packages for all data tidying and figures []. All spatial procedures on occurrence data used functions from the sf package [].
 
-rgbif used to download occurrence data
+# Results
+
+```{r, include=FALSE}
+require(tidyverse)
+
+site_data <- read_csv('~/Desktop/Grinnell-Mammal-Community-Shifts/Data/site_data_clean.csv') %>% 
+  mutate(cti_direction =  case_when(cti_rate > 0 ~ 'increasing',
+                                   cti_rate < 0 ~ 'decreasing',
+                                   cti_rate == 0 ~ 'no_change'),
+         cpi_direction = case_when(cpi_rate > 0 ~ 'increasing',
+                                     cpi_rate < 0 ~ 'decreasing',
+                                     cpi_rate == 0 ~ 'no_change'))
+
+load('~/Desktop/Grinnell-Mammal-Community-Shifts/Data/occurrence_metadata.Rdata')
+
+#Climate change summaries.
+site_data %>% 
+  group_by(Region) %>% 
+  summarise(temp_change = median(temp_change),
+            precip_change = median(precip_change))
+
+#Occurrence information.
+sum(occurrence_metadata$filtered_records)
+min(occurrence_metadata$filtered_records)
+max(occurrence_metadata$filtered_records)
+
+#Number of sites with positiv thermophilization.
+site_data %>% 
+  group_by(Region,cti_direction) %>% 
+  summarise(n_rows_cti = length(cti_direction))
+
+site_data %>% 
+  group_by(Region, cpi_direction) %>% 
+  summarise(n_rows_cti = length(cpi_direction))
+
+
+```
+
+Over the past \~100 years temperatures have risen in all three regions (Fig. 1): Northern sites have risen 1.1°C, central sites have risen 1.4°C, and southern sites have risen 1.5°C. We observed a positive effect of elevation on site warming in central and southern regions, in line with a recent analysis showing elevational-dependent warming is a common phenomenon worldwide [@Pepin2015].
+
+Mean annual precipitation has decreased 126 mm in northern sites, 87 mm in central sites, and 120 mm in southern sites (Fig. 1). An important exception to these patterns are low-elevation northern sites that have higher precipitation regimens in the modern era. All sites showed elevation-dependent drying, with higher elevations experiencing the largest decreases in precipitation (Fig. S1).
+
+The final data set used to measure species' thermal and precipitation preferences included 56041 occurrences, and these preferences varied considerably across species (Table S2). There is considerable variation in the extant to which small-mammal communities have changed since original surveys, but community richness shows an overall decline (Fig S2). We observed positive and significant region-wide thermophilization rates across all three regions (one-sided t-test, Fig. 2). Thermophilization rates decreased with latitude, with the fastest rates occurring in southern sites (Fig. S3). In the northern region, 80% of all sites showed evidence for thermophilization, while only 16% showed a decrease in the CTI (Fig. 2). In the central region, 51% of sites showed evidence for thermophilization, 23% had no change, and 26% sites showed a decrease in the CTI. In the southern region, 63% of all sites showed evidence for thermophilization, only 4% of sites had no change, and 33% sites showed a decrease in the CTI. We observed the greatest thermophilization rates at mid-elevations in southerns sites (Fig. 2).
+
+We also observed evidence for mesophilization in all three regions, but only northern and central regions were had mesophilization rates significantly less than zero (Fig. 2). Despite region-wide mesophilization rate in the northern region to be less than zero in northern sites, we observed an equal proportion of sites showed decreases and increases in the CPI. In the central region, 60% of sites showed evidence for mesophilization, 9% sites exhibited no change in the CPI, and 31% of sites had positive mesophilization rates. In the southern region, 44% of sites showed evidence for mesophilization, 26% of sites had no change in the CPI, and 30% of sites had positive mesophilization rates.
+
+# Discussion
+
+*Paragraph 1 -* Provides a general statement of the result, as well as a brief roadmap of what is to come in the discussion. Highlights the key results related to this roadmap. Mention key thermophilization and mesophilization results. Tie into broader implications in the field.
+
+Paragraph 2 - Thermophilization. "We found strong evidence for thermophilization". Explanation of results after results statement. How does it compare to other literature? Thermophilization could be the result of x# of mechanisms... First, dispersal...
+
+Paragraph 3 - Mesophilization.
+
+Paragraph 4 - Discuss species-level vs community-level responses exhaustively. OK to speculate a bit here. Previous studies of species-level responses of climate change in Sierra Nevada suggest \"this\". We found \"\". How do we relate this to that.
+
+Paragraph 5 - Conclusion.
 
 # Figures
 
@@ -120,17 +110,7 @@ Figure 1: Climate vectors for site mean annual temperature (MAT) and mean annual
 
 ![](figure_exports/fig_changecci_multipanel.jpg)
 
-Figure 2: Thermophilization rates (°C yr--1) and Mesophilization rates (mm yr--1) of study sites in the three study regions across elevation. Bar plots represent the relative frequency of sites with communities displaying warming and/or drying (orange), cooling and/or wetting (purple), or no change in community climate indices (black). A,B) Thermophilization and Mesophilization rates in Lassen National Park. C,D) Thermophilization and Mesophilization rates in Yosemite National Park. E,F) Thermophilization and Mesophilization rates in Sequoia and Kings Canyon National Park. \clearpage
-
-\newpage
-
-![](figure_exports/sp_richness_change.jpg)
-
-Change in site species richness between modern and historical eras at A) all sites, B) Lassen , C) Yosemite and D) Sequoia and Kings Canyon National Parks. Vertical line represents no change in species richness. \clearpage
-
-# Citations
-
-GBIF Occurrence Download <https://doi.org/10.15468/dl.7x7sex> Accessed from R via rgbif (<https://github.com/ropensci/rgbif>) on 2023-06-29
+Figure 2: Thermophilization rates (°C yr--1) and Mesophilization rates (mm yr--1) of study sites in the three study regions across elevation. Box plots represent region-wide trends in thermophilization and mesophilization rates (one-tail t-test). Colors represent communities displaying warming and/or drying (orange), cooling and/or wetting (purple), or no change in community climate indices (black). Communities with thermophilization and mesophilization rates of 0 represent communities whose composition has not changed since original surveys. A,D) Thermophilization and Mesophilization rates in the northern region. B,E) Thermophilization and Mesophilization rates in the central region. D,F) Thermophilization and Mesophilization rates in the southern region. \clearpage
 
 # Tables
 
@@ -140,7 +120,19 @@ GBIF Occurrence Download <https://doi.org/10.15468/dl.7x7sex> Accessed from R vi
 
 ![](figure_exports/fig_siteclimatechange_elev.jpg)
 
-Figure S1: Changes in mean annual temperature (MAT) and mean annual precipitation (MAP) across elevation in A) Lassen, B) Yosemite, and C) Sequoia and Kings Canyon National Parks. Most sites showed decreases in precipitation and increases in temperature. \clearpage
+Figure S1: Changes in mean annual temperature (MAT) and mean annual precipitation (MAP) across elevation in A,B) Northern, C,D) Central, and E,F) southern sites. \clearpage
+
+\newpage
+
+![](figure_exports/sp_richness_change.jpg)
+
+Fig S2: Change in site species richness between modern and historical eras at A) all sites, B) Lassen , C) Yosemite and D) Sequoia and Kings Canyon National Parks. Vertical line represents no change in species richness. \clearpage
+
+\newpage
+
+![](figure_exports/cci_betweensite_boxplots.jpg)
+
+Figure S3: Thermophilization and mesophilization rates between study regions. Colors represent communities displaying warming and/or drying (orange), cooling and/or wetting (purple), or no change in community climate indices (black). \clearpage
 
 # Supplementary Tables
 
@@ -148,10 +140,18 @@ Figure S1: Changes in mean annual temperature (MAT) and mean annual precipitatio
 
 ![](table_exports/site_summary_table.pdf)
 
-Table 1: Elevation, climate, and B-diversity information for all sites in Lassen (LA), Yosemite (YO), and Sequoia & Kings Canyon (SS) National Parks. \clearpage
+Table 1: Elevation, climate, and B-diversity information for all sites in Lassen (LA), Yosemite (YO), and Sequoia & Kings Canyon (SS) National Parks.
+
+\clearpage
 
 \newpage
 
 ![](table_exports/species_summary_table.pdf)
 
-Table 2: Species climate preferences as calculated using GBIF records. \clearpage
+Table 2: Species climate preferences as calculated using GBIF records.
+
+\clearpage
+
+# Citations
+
+GBIF Occurrence Download <https://doi.org/10.15468/dl.7x7sex> Accessed from R via rgbif (<https://github.com/ropensci/rgbif>) on 2023-06-29
