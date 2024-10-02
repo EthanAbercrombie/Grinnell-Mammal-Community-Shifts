@@ -42,12 +42,13 @@ occurrence_climate_data$year_lower[match(occurrence_data$record_number, occurren
 
 occurrence_climate_data_summary <- occurrence_climate_data %>%
   group_by(record_number) %>%
-  filter(Year >= year_lower & Year <= year_upper) %>% 
-  group_by(record_number) %>%
-  summarise(
-    med_ann_temp = median(MAT),
-    med_ann_precip = median(MAP)
-  )
+  filter(Year >= year_lower & Year <= year_upper) %>%
+  mutate(
+    med_ann_temp = median(MAT, na.rm = TRUE),
+    med_ann_precip = median(MAP, na.rm = TRUE)
+  ) %>%
+  slice(1) %>%
+  select(record_number, med_ann_temp, med_ann_precip)
 
 occurrence_data_merged <- inner_join(occurrence_data,
                                      occurrence_climate_data_summary,
@@ -83,10 +84,10 @@ write_csv(occurrence_data_merged,
 #             precip_max = max(med_ann_precip))
 
 species_temperature_preferences <- occurrence_data_merged %>%
-  select(species_name,
+  select(species,
          med_ann_temp,
          med_ann_precip) %>%
-  group_by(species_name) %>% #For each species, I kept those records within the 5th and 95th quantiles to avoid climate extremes.
+  group_by(species) %>% #For each species, I kept those records within the 5th and 95th quantiles to avoid climate extremes.
   filter(between(med_ann_temp,
                  quantile(med_ann_temp, 0.05),
                  quantile(med_ann_temp, 0.95))) %>%
@@ -95,10 +96,10 @@ species_temperature_preferences <- occurrence_data_merged %>%
             temp_max = max(med_ann_temp))
 
 species_precipitation_preferences <- occurrence_data_merged %>%
-  select(species_name,
+  select(species,
          med_ann_precip,
          med_ann_precip) %>%
-  group_by(species_name) %>% #For each species, I kept those records within the 5th and 95th quantiles to avoid climate extremes.
+  group_by(species) %>% #For each species, I kept those records within the 5th and 95th quantiles to avoid climate extremes.
   filter(between(med_ann_precip,
                  quantile(med_ann_precip, 0.05),
                  quantile(med_ann_precip, 0.95))) %>%
@@ -126,7 +127,7 @@ species_precipitation_preferences <- occurrence_data_merged %>%
 
 species_climate_preferences <- full_join(species_precipitation_preferences,
                                          species_temperature_preferences,
-                                         by = 'species_name')
+                                         by = 'species')
 
 #Save preferences in seperate file.
 write_csv(species_climate_preferences,
