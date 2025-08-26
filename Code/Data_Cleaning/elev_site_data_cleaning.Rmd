@@ -12,6 +12,7 @@ output: html_document
 require(tidyverse)
 require(reshape2)
 require(sf)
+require(betapart) #For beta-diversity measurements.
 ```
 
 # Load Data
@@ -21,16 +22,18 @@ require(sf)
 #This file contains the climate preferences of each species. Generated through the file "ClimateNA_extraction.R".
 
 sp_climate_data <- read_csv('~/Desktop/Grinnell-Mammal-Community-Shifts/Data/climate_data/species_climate_preferences.csv') %>% 
-  mutate_at("species_name", str_replace_all, "_", "") %>% 
-  mutate(species_name = str_replace(species_name,
+  mutate_at("species", str_replace_all, "_", "") %>% 
+  mutate(species_name = str_replace(species,
                                     pattern = 'Peromyscusmaniculatussonoriensis',
                                     replacement = "Peromyscusmaniculatus"))
 
 #Save species list
-species_list <- unique(sp_climate_data$species_name)
+species_list <- unique(sp_climate_data$species)
 ```
 
-# PFA Data
+# Species' elevational distribution data
+
+Elevational distribution data were measured using probability of false absence (pfa) for contemporary and historical time periods.
 
 ```{r data, include=FALSE}
 #load pfa data (probability of false absence). This data is used in Rowe et al. 2015.
@@ -112,44 +115,86 @@ pfa_data <- melt(pfa_data,
 #Save pfa_data
 write_csv(pfa_data,
           file = "~/Desktop/Grinnell-Mammal-Community-Shifts/Data/pfa_data_clean.csv")
+
+#pfa_data table
+pfa_data_table <- pfa_data %>% 
+  filter(Era == 'H' |
+           Era == 'M') %>% 
+  mutate(Era = case_when(Era == 'H' ~ "Historical",
+                          Era == 'M' ~ "Modern")) %>% 
+  pivot_wider(names_from = Region,
+              values_from = c(species_min,
+                              species_max)) %>% 
+  mutate(Lassen = paste(species_min_LA,
+                         species_max_LA,
+                         sep = '-'),
+         Yosemite = paste(species_min_YO,
+                         species_max_YO,
+                         sep = '-'),
+         Sequoia = paste(species_min_SS,
+                         species_max_SS,
+                         sep = '-')) %>% 
+  select(Era,
+         species_name,
+         Lassen,
+         Yosemite,
+         Sequoia)
+
+write_csv(pfa_data_table,
+          file = '~/Desktop/Grinnell-Mammal-Community-Shifts/Manuscript/table_exports/species_elevation_table.csv')
 ```
 
 # Site Data
 
 ```{r data, include=FALSE}
 #load site data. Filter to exclude species and psi columns
-site_data_ <- read_csv('/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinnell-Mammal-Community-Shifts/Rowe et al. 2017 - FINAL Occupancy Analyses/R Scripts and Mark Data/PSI-by-Site-08mar2011.csv') %>% 
-  rename(site_name = AggregateName) %>%
-  distinct(site_name,
-           .keep_all = T) #This results in a single copy of site information. .keep all argument keeps all columns.
 
-site_data <- site_data_ %>% 
-  bind_rows(filter(site_data_,
-                   Era == 'H')) %>%  
+# Commented read_csv below uses aggregate sites.
+# site_data_ <- read_csv('/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinnell-Mammal-Community-Shifts/Rowe et al. 2017 - FINAL Occupancy Analyses/R Scripts and Mark Data/PSI-by-Site-08mar2011.csv') %>% 
+#   rename(site_name = AggregateName) %>%
+#   distinct(site_name,
+#            .keep_all = T) #This results in a single copy of site information. .keep all argument keeps all columns.
+
+# This code uses all original Grinnell sites.
+site_data_ <- readxl::read_excel('/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/site_data/allregionslocalitiestoaggswithelev08Mar2011.xlsx')
+
+site_data_ <- site_data_ %>%
+  rename(Era = era,
+         Region = region,
+         site_name = aggname) %>% 
+  filter(Era == 'H') %>% 
+  select(-speclocality, 
+         -loclat,
+         -loclong,
+         -locelevm) %>% 
+  distinct() %>% 
+  mutate(aggelev = round(aggelev))
+
+site_data <-  site_data_ %>% 
+  bind_rows(site_data_) %>% 
   mutate(Era = if_else(duplicated(site_name),
                        "HM",
-                       Era),
-         Elev_prism = NA) %>% #Make duplicates of historical site, and rename Era to "HM". This will be used to calculate contemporary CCIs for historical sites. We must use the position of historical sites because historical and modern sites are not at the same location.
-  relocate(Elev_prism,
-           .after = Elev) %>% 
-  select(-Species,
-         -`Elevation Estimated PSI`) %>% 
-  filter(Era == "H" | Era == 'HM')
+                       Era)) #Make duplicates of historical site, and rename Era to "HM". This will be used to calculate contemporary CCIs for historical sites. We must use the position of historical sites because historical and modern sites are not at the same location.
 
-#Add elevation data from PRISM rasters. PRISM data is used becuase ClimateNA rely's on PRISM data. Lassen historical site elevation in site_data recorded inaccurately -- using PRISM elevation fixes this issue.
-prism_elev_data <- terra::rast("/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/Geospatial Data/PRISM_us_dem_800m.tif")
 
-  site_data_sf <- site_data %>% 
-    st_as_sf(coords = c('longitude',
-                        'latitude'),
-             crs = st_crs("EPSG:4269"))
-  
-  site_data <- site_data %>% 
-    mutate(Elev_prism = raster::extract(prism_elev_data,
-                       y = site_data_sf)[,2])
+# Not needed since using new data.
+
+# #Add elevation data from PRISM rasters. PRISM data is used because ClimateNA relies on PRISM data. Lassen historical site elevation in site_data recorded inaccurately -- using PRISM elevation fixes this issue.
+# prism_elev_data <- terra::rast("/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/Geospatial Data/PRISM_us_dem_800m.tif")
+# 
+#   site_data_sf <- site_data %>% 
+#     st_as_sf(coords = c('longitude',
+#                         'latitude'),
+#              crs = st_crs("EPSG:4269"))
+#   
+#   site_data <- site_data %>% 
+#     mutate(Elev_prism = raster::extract(prism_elev_data,
+#                        y = site_data_sf)[,2])
 ```
 
-Calculate community climate indeces and save to site_data.
+## Community Climate Indeces
+
+Calculate community climate indices and save to site_data.
 
 ```{r data, include=FALSE}
 #Calculate the community precipitation and community temperature index.
@@ -166,10 +211,10 @@ for (i in 1:nrow(site_data)) {
     #print(sp)
     pfa_loop_2 <- pfa_loop %>% 
     filter(species_name == sp)
-    site_data[i,sp] <- case_when(site_data[i, 'Elev_prism'] >= pfa_loop_2$species_min &
-                                      site_data[i, 'Elev_prism'] <= pfa_loop_2$species_max ~ 1,
-                                      site_data[i, 'Elev_prism'] < pfa_loop_2$species_min ~ 0,
-                                      site_data[i, 'Elev_prism'] > pfa_loop_2$species_max ~ 0)
+    site_data[i,sp] <- case_when(site_data[i, 'aggelev'] >= pfa_loop_2$species_min &
+                                      site_data[i, 'aggelev'] <= pfa_loop_2$species_max ~ 1,
+                                      site_data[i, 'aggelev'] < pfa_loop_2$species_min ~ 0,
+                                      site_data[i, 'aggelev'] > pfa_loop_2$species_max ~ 0)
   }
   
 }
@@ -237,56 +282,131 @@ colnames(community_data) <- site_data$site_name
              .after = CTI) %>% 
     relocate(cpi_change,
              .after = CPI)
+  
+  nrow(site_data)
+  # Remove sites with cti_change/cpi_change == 0. This occurs at high elevations with no species present. Should result in 2 sites removed, both historical and modern (need comparisons). nrow(site_data shoudl read 4 less than above.)
+  site_data <- filter(site_data,
+                      !is.na(cti_change))
+  nrow(site_data)
+
 ```
+
 
 Save site information in a way to be used in ClimateNA so we understand how climate has changed at each site.
 
 ```{r data, include=FALSE}
 # #Save site_data in csv compatible with climate NA to extract climate data.
-#   site_data_climateNA <- site_data %>% 
+#   site_data_climateNA <- site_data %>%
 #     select(site_name,
 #            Era,
-#            latitude,
-#            longitude,
-#            Elev_prism) %>% 
+#            agglat,
+#            agglong,
+#            aggelev) %>%
 #     transmute(ID1 = site_name,
 #               ID2= Era,
-#               lat = latitude,
-#               long = longitude,
-#               el = Elev_prism)
-#   
+#               lat = agglat,
+#               long = agglong,
+#               el = aggelev)
+# 
 #   write.csv(site_data_climateNA,
-#             file = "/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinnell-Mammal-Community-Shifts/site_data_climateNA_extraction.csv",
+#             file = "~/Desktop/Grinnell-Mammal-Community-Shifts/Data/climate_datasite_data_climateNA_extraction.csv",
 #             fileEncoding = 'UTF-8',
 #             row.names = FALSE)
+#   
+# # Define your output directory
+# out_dir <- '/Users/ethanabercrombie/Desktop/Grinnell-Mammal-Community-Shifts/Data/climate_data/'
+# 
+# # Initialize an empty data frame to store the results
+# combined_data <- data.frame()
+# 
+# # Iterate over the period list from 1901 to 2021
+# for (year in 1901:2021) {
+#   # Run the ClimateNAr function for the current year
+#   result <- ClimateNAr::climateNAr(inputFile = "~/Desktop/Grinnell-Mammal-Community-Shifts/Data/climate_datasite_data_climateNA_extraction.csv",
+#                        periodList = year,  # Running for one year at a time
+#                        varList = c('MAT', 'MAP'),
+#                        outDir = out_dir)  # Saving to the directory (though you can remove this if you only want the combined file)
+#   
+#   # Add the current year as a new column
+#   result$Year <- year
+#   
+#   # Combine the result with the previous years' data
+#   combined_data <- rbind(combined_data, result)
+# }
+# 
+# 
+# # Save the final combined data frame to a CSV file
+# write.csv(combined_data, file = file.path("~/Desktop/Grinnell-Mammal-Community-Shifts/Data/climate_data/site_data_climateNA_extraction_1901-2021Y.csv"), row.names = FALSE)
+
+site_data_climate <- read_csv("/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinnell-Mammal-Community-Shifts/site_data_climateNA_extraction_1901-2021Y.csv")
+
+names(site_data_climate)[1] = "site_name"
+names(site_data_climate)[2] = "Era"
+
+site_data_climate <- merge(site_data_climate,
+      site_data[,c('Region','site_name')],
+      by = c('site_name')) %>% #Add Region info so we can filter each region by corresponding year range.
+  distinct()
+
+# Years pulled from Grinnell Resurvey Project Website.
   
-site_data_climate <- read_csv("/Users/ethanabercrombie/Library/CloudStorage/Box-Box/Grinnell-Mammal-Community-Shifts/site_data_climateNA_extraction_1901-2021Y.csv") 
+site_data_climate <- site_data_climate %>% 
+  mutate(year_lower = case_when(Region == 'LA' & Era == 'H' ~ (1929-15),
+                                Region == 'YO' & Era == 'H' ~ (1920-15),
+                                Region == 'SS' & Era == 'H' ~ (1916-15),
+                                Region == 'LA' & Era == 'HM' ~ (2009-15),
+                                Region == 'YO' & Era == 'HM' ~ (2005-15),
+                                Region == 'SS' & Era == 'HM' ~ (2010-15)),
+         year_upper = case_when(Region == 'LA' & Era == 'H' ~ (1929),
+                                Region == 'YO' & Era == 'H' ~ (1920),
+                                Region == 'SS' & Era == 'H' ~ (1916),
+                                Region == 'LA' & Era == 'HM' ~ (2009),
+                                Region == 'YO' & Era == 'HM' ~ (2005),
+                                Region == 'SS' & Era == 'HM' ~ (2010)))
 
-names(site_data_climate)[2] = "site_name"
-names(site_data_climate)[3] = "Era"
-
-site_data_climate_H <- site_data_climate %>% 
-  filter(Era == 'H',
-         Year <= 1931) %>% 
-  group_by(site_name) %>% 
+site_data_climate <- site_data_climate %>% 
+  group_by(site_name,
+           Era) %>%
+  filter(Year >= year_lower & Year <= year_upper) %>% 
   summarise(temp = median(MAT),
-            precip = median(MAP)) %>% 
-  mutate(Era = "H")
+            precip = median(MAP))
 
-site_data_climate_M <- site_data_climate %>% 
-  filter(Era == 'HM',
-         Year >= 1991) %>% 
-  group_by(site_name) %>% 
-  summarise(temp = median(MAT),
-            precip = median(MAP)) %>% 
-  mutate(Era = "HM")
+# site_data_climate_H <- site_data_climate %>% 
+#   filter(Era == 'H',
+#          Year <= 1931) %>% 
+#   group_by(site_name) %>% 
+#   summarise(temp = median(MAT),
+#             precip = median(MAP)) %>% 
+#   mutate(Era = "H")
+# 
+# site_data_climate_M <- site_data_climate %>% 
+#   filter(Era == 'HM',
+#          Year >= 1991) %>% 
+#   group_by(site_name) %>% 
+#   summarise(temp = median(MAT),
+#             precip = median(MAP)) %>% 
+#   mutate(Era = "HM")
+
+# site_data <- site_data %>% 
+#   left_join(site_data_climate_H,
+#             by = c("site_name",
+#                    "Era")) %>% 
+#   rows_update(site_data_climate_M,
+#               by = c("site_name",
+#                    "Era")) %>% 
+#   group_by(site_name) %>%
+#   mutate(temp_change = diff(temp),
+#          precip_change = diff(precip)) %>% 
+#   relocate(c(temp,
+#              temp_change),
+#            .before = CTI) %>% 
+#   relocate(c(precip,
+#              precip_change),
+#            .before = CPI)
 
 site_data <- site_data %>% 
-  left_join(site_data_climate_H,
+  left_join(site_data_climate,
             by = c("site_name",
-                   "Era")) %>% 
-  rows_update(site_data_climate_M,
-              by = c("site_name",
                    "Era")) %>% 
   group_by(site_name) %>%
   mutate(temp_change = diff(temp),
@@ -299,135 +419,41 @@ site_data <- site_data %>%
            .before = CPI)
 ```
 
-Calculate site marginality, which represents how close (on average) a site is to the edge of species elevational range.
+Calculate Thermophilization & Mesophilization Rates
 
-```{r data, include=FALSE}
-# Calculate site marginality.
+Lassen -- originally sampled 1924-1929, resurveyed 2006-2009, duration (1929-2009) = 80 years
 
-for (i in 1:nrow(site_data)) {
-  
-  print(i)
-  
-  site_data_ <<- site_data[i,] %>% 
-    replace(is.na(.), 0)
-  
-  x <- site_data_ %>% 
-    select(site_name,
-           Era,
-           temp,
-           any_of(species_list)) 
-  
-  y <- site_data_ %>% 
-    select(site_name,
-           Era,
-           precip,
-           any_of(species_list))
-  
-  for (species in species_list) {
-    
-    print(species)
-    
-    if (x[species] == 1){
-      
-      sp_data <- filter(sp_climate_data,
-                        species_name == species)
-      
-      sp_marginality <-abs(x$temp - ((sp_data$temp_max + sp_data$temp_min)/2))/((sp_data$temp_max - sp_data$temp_min)/2)
-      
-      x[species] <- x[species] * sp_marginality
-      
-    } else {
-      x[species] = NA
-    }
-  }
-  
-  x$temp_marginality = rowMeans(subset(x, select = c(species_list)), na.rm = T)
+Yosemite -- originally sampled 1914-1920, resurveyed [not mentioned, believe 2005], duration (1920-2005) = 85 years
 
-  for (species in species_list) {
-    
-    print(species)
-    
-    if (y[species] == 1){
-      
-      sp_data <- filter(sp_climate_data,
-                        species_name == species)
-      
-      sp_marginality <-abs(y$precip - ((sp_data$precip_max + sp_data$precip_min)/2))/((sp_data$precip_max - sp_data$precip_min)/2)
-      
-      y[species] <- y[species] * sp_marginality
-      
-    } else {
-      y[species] = NA
-    }
-  }
-  
-  y$precip_marginality = rowMeans(subset(y, select = c(species_list)), na.rm = T)
-  
-  #Save marginality to site_data.
-  
-  site_data[i,'temp_marginality'] = x$temp_marginality
-  
-  site_data[i, 'precip_marginality'] = y$precip_marginality
-  
-}
+Sequoia -- originally sampled 1911-1916, resurveyed 2008-2010, duration (1916-2010) = 94 years
 
+```{r}
 site_data <- site_data %>% 
-  relocate(temp_marginality, .after = temp) %>% 
-  relocate(precip_marginality, .after = precip)
+  mutate(cti_rate = case_when(Region == 'LA' ~ cti_change/80,
+                                Region == 'YO' ~ cti_change/85,
+                                Region == 'SS' ~ cti_change/94),
+         cpi_rate = case_when(Region == 'LA' ~ cpi_change/80,
+                                Region == 'YO' ~ cpi_change/85,
+                                Region == 'SS' ~ cpi_change/94),
+         temp_rate = case_when(Region == 'LA' ~ temp_change/80,
+                                Region == 'YO' ~ temp_change/85,
+                                Region == 'SS' ~ temp_change/94),
+         precip_rate = case_when(Region == 'LA' ~ precip_change/80,
+                                Region == 'YO' ~ precip_change/85,
+                                Region == 'SS' ~ precip_change/94)) %>% 
+  relocate(cti_rate,
+           .after = cti_change) %>% 
+  relocate(cpi_rate,
+           .after = cpi_change)
 ```
 
-Save site_data as a new, edited, file.
+Save file.
 
 ```{r data, include=FALSE}
 #Save site_data
   write_csv(site_data,
           file = "~/Desktop/Grinnell-Mammal-Community-Shifts/Data/site_data_clean.csv")
-  
-```
 
-
-
-
-
-
-
-
-
-
-```{r}
-#This code is used to create the conservative communities, but needs more development.
-# site_data <- site_data %>% 
-#   group_by(Region,
-#            Era) %>% 
-#   arrange(Elev) %>% 
-#   mutate(elev_rank = 1:n()) %>% 
-#   ungroup() #Remove Lassen until we figure out what's happening at this site.
-
-for (species in species_list) {
-  pfa_data_loop<<- filter(pfa_data,
-                          species_name == species &
-                            Era != 'H') %>% 
-    group_by(Region)
-}
-
-x <- filter(pfa_data,
-            species_name == species_list[1] &
-              Era == 'HM' &
-              Region == "LA")
-
-sp_min_elev_present <-x$species_min
-
-site_data_loop <- site_data %>%
-  filter(Elev <= sp_min_elev_present &
-           Region == x$Region,
-         Era == 'HM')
-
-delta_elev_m <- abs(site_data_loop$Elev - sp_min_elev_present)
-x$species_min_retract_conserv <- min(delta_elev_m) + 1
-
-for (species in species_list) {
-  
-  
-  
-}
+#Load data
+site_data <- read_csv('~/Desktop/Grinnell-Mammal-Community-Shifts/Data/site_data_clean.csv')
 ```
