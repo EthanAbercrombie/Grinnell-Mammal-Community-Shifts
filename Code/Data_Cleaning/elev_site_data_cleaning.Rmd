@@ -234,7 +234,7 @@ colnames(community_data) <- site_data$site_name
     t() %>% 
     as.data.frame() %>% 
     rowwise() %>% 
-    mutate(CTI = median(c_across(everything()),
+    mutate(CTI = mean(c_across(everything()),
                            na.rm = T))
   
   community_data_MAT <- as.data.frame(community_data_MAT) %>% 
@@ -252,7 +252,7 @@ colnames(community_data) <- site_data$site_name
     t() %>% 
     as.data.frame() %>% 
     rowwise() %>% 
-    mutate(CPI = median(c_across(everything()),
+    mutate(CPI = mean(c_across(everything()),
                            na.rm = T))
   
   community_data_MAP <- as.data.frame(community_data_MAP) %>% 
@@ -288,7 +288,164 @@ colnames(community_data) <- site_data$site_name
   site_data <- filter(site_data,
                       !is.na(cti_change))
   nrow(site_data)
+  
+# ----------------------------------------------------------
+# Decompose CTI/CPI change into extinction vs. colonization
+# and split by adaptation. Outputs are added to `site_data`.
+# ----------------------------------------------------------
 
+# -- Traits lookup (only what we need)
+species_traits <- sp_climate_data %>%
+  select(
+    species_name, MAT, MAP,
+    temperature_adaptation,   # "cool-adapted" / "warm-adapted"
+    precipitation_adaptation  # "dry-adapted"  / "wet-adapted"
+  )
+
+# -- Long site × species presence with traits
+site_species_long <- site_data %>%
+  select(site_name, Era, any_of(species_list)) %>%
+  pivot_longer(
+    cols = all_of(species_list),
+    names_to = "species_name",
+    values_to = "presence"
+  ) %>%
+  left_join(species_traits, by = "species_name")
+
+# -- Put Historical (H) and Modern (HM) presence side-by-side
+site_species_split <- site_species_long %>%
+  pivot_wider(
+    names_from  = Era,
+    values_from = presence,
+    values_fill = 0
+  ) %>%
+  mutate(
+    status = case_when(
+      H  == 1 & HM == 0 ~ "extinction",
+      H  == 0 & HM == 1 ~ "colonization",
+      H  == 1 & HM == 1 ~ "persistence",
+      TRUE              ~ "absent"
+    )
+  )
+
+# -- Safe mean: return NA_real_ if no values
+s_mean <- function(x) {
+  x <- x[!is.na(x)]
+  if (length(x) == 0) NA_real_ else mean(x)
+}
+
+# -- Per-site decomposition function
+compute_site_contrib <- function(df_site) {
+  # Logical membership for Historical / Persisters / Modern
+  H_idx  <- df_site$H  == 1
+  HM_idx <- df_site$HM == 1
+  P_idx  <- df_site$H  == 1 & df_site$HM == 1   # persisters
+
+  # Vectors
+  mat <- df_site$MAT
+  map <- df_site$MAP
+  t_adapt <- df_site$temperature_adaptation
+  p_adapt <- df_site$precipitation_adaptation
+  stat    <- df_site$status
+
+  # -- Baseline means
+  CTI_H  <- s_mean(mat[H_idx])
+  CTI_P  <- s_mean(mat[P_idx])
+  CTI_HM <- s_mean(mat[HM_idx])
+
+  CPI_H  <- s_mean(map[H_idx])
+  CPI_P  <- s_mean(map[P_idx])
+  CPI_HM <- s_mean(map[HM_idx])
+
+  # -- Sequential contributions
+  cti_temp_extinction   <- CTI_P  - CTI_H
+  cti_temp_colonization <- CTI_HM - CTI_P
+
+  cpi_precip_extinction   <- CPI_P  - CPI_H
+  cpi_precip_colonization <- CPI_HM - CPI_P
+
+  # ---------- CTI split (warm vs. cool) ----------
+  ext_warm_idx <- H_idx  & !HM_idx & t_adapt == "warm-adapted"
+  ext_cool_idx <- H_idx  & !HM_idx & t_adapt == "cool-adapted"
+
+  CTI_minus_warm_ext <- s_mean(mat[ H_idx & !ext_warm_idx ])
+  CTI_minus_cool_ext <- s_mean(mat[ H_idx & !ext_cool_idx ])
+
+  cti_temp_extinction_warm <- CTI_minus_warm_ext - CTI_H
+  cti_temp_extinction_cool <- CTI_minus_cool_ext - CTI_H
+
+  col_warm_idx <- !H_idx & HM_idx & t_adapt == "warm-adapted"
+  col_cool_idx <- !H_idx & HM_idx & t_adapt == "cool-adapted"
+
+  CTI_plus_warm_col <- s_mean(mat[ P_idx | col_warm_idx ])
+  CTI_plus_cool_col <- s_mean(mat[ P_idx | col_cool_idx ])
+
+  cti_temp_colonization_warm <- CTI_plus_warm_col - CTI_P
+  cti_temp_colonization_cool <- CTI_plus_cool_col - CTI_P
+
+  # ---------- CPI split (wet vs. dry) ----------
+  ext_wet_idx <- H_idx  & !HM_idx & p_adapt == "wet-adapted"
+  ext_dry_idx <- H_idx  & !HM_idx & p_adapt == "dry-adapted"
+
+  CPI_minus_wet_ext <- s_mean(map[ H_idx & !ext_wet_idx ])
+  CPI_minus_dry_ext <- s_mean(map[ H_idx & !ext_dry_idx ])
+
+  cpi_precip_extinction_wet <- CPI_minus_wet_ext - CPI_H
+  cpi_precip_extinction_dry <- CPI_minus_dry_ext - CPI_H
+
+  col_wet_idx <- !H_idx & HM_idx & p_adapt == "wet-adapted"
+  col_dry_idx <- !H_idx & HM_idx & p_adapt == "dry-adapted"
+
+  CPI_plus_wet_col <- s_mean(map[ P_idx | col_wet_idx ])
+  CPI_plus_dry_col <- s_mean(map[ P_idx | col_dry_idx ])
+
+  cpi_precip_colonization_wet <- CPI_plus_wet_col - CPI_P
+  cpi_precip_colonization_dry <- CPI_plus_dry_col - CPI_P
+
+  tibble::tibble(
+    cti_temp_extinction,
+    cti_temp_colonization,
+    cti_temp_extinction_warm,
+    cti_temp_extinction_cool,
+    cti_temp_colonization_warm,
+    cti_temp_colonization_cool,
+    cpi_precip_extinction,
+    cpi_precip_colonization,
+    cpi_precip_extinction_wet,
+    cpi_precip_extinction_dry,
+    cpi_precip_colonization_wet,
+    cpi_precip_colonization_dry
+  )
+}
+
+# -- Compute one row of contributions per site_name
+site_contrib <- site_species_split %>%
+  group_by(site_name) %>%
+  group_modify(~ compute_site_contrib(.x)) %>%
+  ungroup()
+
+# -- Join back to site_data
+site_data <- site_data %>%
+  left_join(site_contrib, by = "site_name")
+
+# Optional: if you prefer contributions only on HM rows and NA on H:
+# site_data <- site_data %>%
+#   mutate(across(
+#     c(cti_temp_extinction:cpi_precip_colonization_dry),
+#     ~ if_else(Era == "HM", .x, NA_real_)
+#   ))
+
+site_data <- site_data %>%
+  mutate(across(
+    c(cti_temp_extinction:cpi_precip_colonization_dry),
+    ~ case_when(
+      Region == "LA" ~ .x / 80,   # 80 years → 8 decades
+      Region == "YO" ~ .x / 85,
+      Region == "SS" ~ .x / 94,
+      TRUE ~ .x
+    )
+  ))
+  
 ```
 
 
