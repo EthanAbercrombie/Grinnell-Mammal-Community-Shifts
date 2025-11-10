@@ -162,13 +162,25 @@ site_data_ <- site_data_ %>%
   rename(Era = era,
          Region = region,
          site_name = aggname) %>% 
-  filter(Era == 'H') %>% 
-  select(-speclocality, 
-         -loclat,
-         -loclong,
-         -locelevm) %>% 
-  distinct() %>% 
+  filter(Era == 'H',
+         slope == 'W') %>% 
+  distinct(site_name,
+           .keep_all = TRUE) %>% 
+  filter(site_name != 'SSHistoricMtGould', # Not species present in historical or modern era
+         site_name != 'LAHistoricMillCreek') %>%  # Not included in Rowe et al. Analyses
   mutate(aggelev = round(aggelev))
+
+LA_data <- filter(site_data_,
+                  Region == 'LA')
+nrow(LA_data)
+
+YO_data <- filter(site_data_,
+                  Region == 'YO')
+nrow(YO_data)
+
+SS_data <- filter(site_data_,
+                  Region == 'SS')
+nrow(SS_data)
 
 site_data <-  site_data_ %>% 
   bind_rows(site_data_) %>% 
@@ -284,11 +296,7 @@ colnames(community_data) <- site_data$site_name
              .after = CPI)
   
   nrow(site_data)
-  # Remove sites with cti_change/cpi_change == 0. This occurs at high elevations with no species present. Should result in 2 sites removed, both historical and modern (need comparisons). nrow(site_data shoudl read 4 less than above.)
-  site_data <- filter(site_data,
-                      !is.na(cti_change))
-  nrow(site_data)
-  
+
 # ----------------------------------------------------------
 # Decompose CTI/CPI change into extinction vs. colonization
 # and split by adaptation. Outputs are added to `site_data`.
@@ -499,6 +507,19 @@ site_data_climate <- read_csv("/Users/ethanabercrombie/Library/CloudStorage/Box-
 
 names(site_data_climate)[1] = "site_name"
 names(site_data_climate)[2] = "Era"
+
+# # Check number of unique sites
+# LA_data <- filter(site_data_climate,
+#                   Region == 'LA')
+# nrow(LA_data)
+# 
+# YO_data <- filter(site_data_climate,
+#                   Region == 'YO')
+# nrow(YO_data)
+# 
+# SS_data <- filter(site_data_climate,
+#                   Region == 'SS')
+# nrow(SS_data)
 
 site_data_climate <- merge(site_data_climate,
       site_data[,c('Region','site_name')],
